@@ -34,7 +34,8 @@ const CatMemoryGame: React.FC<CatMemoryGameProps> = ({ mode, images, onGameEnd }
       .sort(() => 0.5 - Math.random())
       .map((image, index) => ({
         id: index,
-        imageId: image.id,
+        // FIX: The CatImage 'id' is a number, but the Card 'imageId' is a string. Convert to string.
+        imageId: String(image.id),
         url: image.url,
         isFlipped: false,
         isMatched: false,

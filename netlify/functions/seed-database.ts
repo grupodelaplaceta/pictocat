@@ -6,7 +6,7 @@ import { MASTER_IMAGE_CATALOG_DATA } from './_shared/catalog-data';
 export const handler: Handler = async () => {
   try {
     const catsToInsert = Object.entries(MASTER_IMAGE_CATALOG_DATA)
-      .flatMap(([phraseId, images]) =>
+      .flatMap(([_, images]) =>
         images.map(image => ({
           theme: image.theme,
           url: image.url,
@@ -18,12 +18,17 @@ export const handler: Handler = async () => {
       return { statusCode: 200, body: 'No new cats to insert.' };
     }
     
-    // Corrected SQL for bulk insert using the postgres.js helper format.
-    // The sql(...) helper generates the full "(columns) VALUES (rows...)" statement.
-    await sql`
-        INSERT INTO cats (theme, url, original_id) ${sql(catsToInsert, 'theme', 'url', 'original_id')}
-        ON CONFLICT (original_id) DO NOTHING
-    `;
+    // Use a transaction to insert cats one by one.
+    // This is more robust than a single large bulk insert and avoids potential query size issues.
+    await sql.begin(async (tx) => {
+        for (const cat of catsToInsert) {
+            await tx`
+                INSERT INTO cats (theme, url, original_id)
+                VALUES (${cat.theme}, ${cat.url}, ${cat.original_id})
+                ON CONFLICT (original_id) DO NOTHING
+            `;
+        }
+    });
 
     const result = await sql`SELECT COUNT(*) FROM cats`;
     const count = result[0].count;
