@@ -17,7 +17,7 @@ const Toast: React.FC<ToastProps> = ({ message, onClose }) => {
   }, [onClose]);
 
   return (
-    <div className="fixed bottom-24 left-1/2 -translate-x-1/2 bg-orange-500 text-white font-bold py-2 px-4 text-sm sm:py-3 sm:px-6 sm:text-base text-center max-w-[90vw] rounded-full shadow-lg z-50 animate-fadeIn">
+    <div className="fixed bottom-24 left-1/2 -translate-x-1/2 bg-slate-800 text-white font-bold py-2 px-4 text-sm sm:py-3 sm:px-6 sm:text-base text-center max-w-[90vw] rounded-full shadow-lg z-50 animate-fadeIn">
       {message}
     </div>
   );

@@ -67,7 +67,7 @@ const CatMemoryGame: React.FC<CatMemoryGameProps> = ({ mode, images, onGameEnd }
         soundService.play('catMeow');
         setCards(prevCards =>
           prevCards.map(card =>
-            card.imageId === firstCard.imageId ? { ...card, isMatched: true } : card
+            card.imageId === firstCard.imageId ? { ...card, isMatched: true, isFlipped: true } : card
           )
         );
         setPairsFound(prev => prev + 1);
@@ -105,23 +105,23 @@ const CatMemoryGame: React.FC<CatMemoryGameProps> = ({ mode, images, onGameEnd }
   const gridTemplateColumns = `repeat(${gridCols}, minmax(0, 1fr))`;
 
   return (
-    <div className="w-full max-w-2xl mx-auto p-4 bg-blue-100 rounded-lg shadow-lg border-4 border-blue-500">
-        <div className="flex justify-between items-center mb-4 text-blue-900 font-bold">
+    <div className="w-full max-w-2xl mx-auto p-4 bg-sky-100 rounded-lg shadow-lg border-4 border-sky-500">
+        <div className="flex justify-between items-center mb-4 text-sky-900 font-bold">
             <div className="text-xl">Pares: {pairsFound} / {mode.pairCount}</div>
             <div className="text-xl">Tiempo: {timeLeft}s</div>
         </div>
         <div className="grid gap-2 md:gap-4" style={{ gridTemplateColumns }}>
             {cards.map((card, index) => (
-                <div key={card.id} className="aspect-square perspective" onClick={() => handleCardClick(index)}>
+                <div key={card.id} className="aspect-square perspective cursor-pointer" onClick={() => handleCardClick(index)}>
                     <div className={`relative w-full h-full transition-transform duration-500 transform-style-3d ${card.isFlipped || card.isMatched ? 'rotate-y-180' : ''}`}>
                         {/* Card Back */}
-                        <div className="absolute w-full h-full backface-hidden bg-blue-600 rounded-lg flex items-center justify-center">
-                            <CatSilhouetteIcon className="w-3/4 h-3/4 text-white/50" />
+                        <div className="absolute w-full h-full backface-hidden bg-sky-500 rounded-lg flex items-center justify-center shadow-md">
+                            <CatSilhouetteIcon className="w-3/4 h-3/4 text-white/70" />
                         </div>
                         {/* Card Front */}
-                        <div className="absolute w-full h-full backface-hidden rotate-y-180 bg-white rounded-lg overflow-hidden">
+                        <div className={`absolute w-full h-full backface-hidden rotate-y-180 bg-white rounded-lg overflow-hidden shadow-md border-4 ${card.isMatched ? 'border-green-500' : 'border-transparent'}`}>
                            <img src={card.url} alt="Gato" className="w-full h-full object-cover" />
-                           {card.isMatched && <div className="absolute inset-0 bg-green-500/50"></div>}
+                           {card.isMatched && <div className="absolute inset-0 bg-green-500/30"></div>}
                         </div>
                     </div>
                 </div>

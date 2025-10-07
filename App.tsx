@@ -1,11 +1,9 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import Header from './components/Header';
 import PhraseCard from './components/PhraseCard';
 import ImageSelector from './components/ImageSelector';
 import FullDisplay from './components/FullDisplay';
-import { INITIAL_PHRASES } from './constants';
-import { ALL_IMAGES_FLAT, INITIAL_UNLOCKED_IMAGE_IDS } from './initialData';
-import { Phrase, CatImage, PlayerStats, EnvelopeTypeId, GameMode, UpgradeId } from './types';
+import { Phrase, CatImage, PlayerStats, EnvelopeTypeId, GameMode, UpgradeId, UserData, UserProfile } from './types';
 import { speak, soundService } from './services/audioService';
 import ShopModal from './components/ShopModal';
 import { ENVELOPES, UPGRADES } from './shopData';
@@ -15,17 +13,25 @@ import GameModeSelector from './components/GameModeSelector';
 import MouseHuntGame from './components/MouseHuntGame';
 import CatMemoryGame from './components/CatMemoryGame';
 import CustomPhraseModal from './components/CustomPhraseModal';
-import { PlusIcon } from './components/Icons';
+import { PlusIcon, SpinnerIcon, CatSilhouetteIcon } from './components/Icons';
 import FelineRhythmGame from './components/FelineRhythmGame';
 import CatTriviaGame from './components/CatTriviaGame';
+import ProfileSetup from './components/ProfileSetup';
+import * as apiService from './services/apiService';
+import type { User } from 'netlify-identity-widget';
+
 
 const App: React.FC = () => {
+    // --- Auth State ---
+    const [netlifyUser, setNetlifyUser] = useState<User | null>(null);
+    const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
+    const [isLoading, setIsLoading] = useState(true);
+    
+    // --- Global Data ---
+    const [catCatalog, setCatCatalog] = useState<CatImage[]>([]);
+
     // --- State Management ---
-    const [phrases, setPhrases] = useState<Phrase[]>([]);
-    const [coins, setCoins] = useState<number>(0);
-    const [unlockedImageIds, setUnlockedImageIds] = useState<Set<string>>(new Set());
-    const [playerStats, setPlayerStats] = useState<PlayerStats>({ level: 1, xp: 0, xpToNextLevel: 100 });
-    const [purchasedUpgrades, setPurchasedUpgrades] = useState<Set<UpgradeId>>(new Set());
+    const [userData, setUserData] = useState<UserData | null>(null);
     
     const [view, setView] = useState<'main' | 'shop' | 'games' | 'playing'>('main');
     const [activeGameMode, setActiveGameMode] = useState<GameMode | null>(null);
@@ -43,77 +49,83 @@ const App: React.FC = () => {
     
     const [toastMessage, setToastMessage] = useState<string>('');
     
-    // Derived state
-    const unlockedImages = useMemo(() => ALL_IMAGES_FLAT.filter(img => unlockedImageIds.has(img.id)), [unlockedImageIds]);
-    const imageMap = useMemo(() => new Map(ALL_IMAGES_FLAT.map(img => [img.id, img])), []);
+    const isReadyToSave = useRef(false);
 
-    // --- Data Persistence ---
-    const loadData = () => {
-        try {
-            const savedData = localStorage.getItem('catCommunicatorData');
-            if (savedData) {
-                const data = JSON.parse(savedData);
-                
-                const savedPhrases = data.phrases || INITIAL_PHRASES;
-                const initialPhraseIds = new Set(INITIAL_PHRASES.map(p => p.id));
-                // Simple migration for old data that doesn't have isCustom flag
-                const migratedPhrases = savedPhrases.map((p: Phrase) => ({
-                    ...p,
-                    isCustom: p.isCustom !== undefined ? p.isCustom : !initialPhraseIds.has(p.id)
-                }));
-
-                setPhrases(migratedPhrases);
-                setCoins(data.coins || 500);
-                setUnlockedImageIds(new Set(data.unlockedImageIds || INITIAL_UNLOCKED_IMAGE_IDS));
-                setPlayerStats(data.playerStats || { level: 1, xp: 0, xpToNextLevel: 100 });
-                setPurchasedUpgrades(new Set(data.purchasedUpgrades || []));
-            } else {
-                // Initialize for first-time players
-                setPhrases(INITIAL_PHRASES);
-                setCoins(500);
-                setUnlockedImageIds(new Set(INITIAL_UNLOCKED_IMAGE_IDS));
-            }
-        } catch (error) {
-            console.error("Failed to load data from localStorage", error);
-        }
-    };
-
-    const saveData = useCallback(() => {
-        try {
-            const data = {
-                phrases,
-                coins,
-                unlockedImageIds: Array.from(unlockedImageIds),
-                playerStats,
-                purchasedUpgrades: Array.from(purchasedUpgrades),
-            };
-            localStorage.setItem('catCommunicatorData', JSON.stringify(data));
-        } catch (error) {
-            console.error("Failed to save data to localStorage", error);
-        }
-    }, [phrases, coins, unlockedImageIds, playerStats, purchasedUpgrades]);
-    
+    // Initialize Netlify Identity and fetch catalog
     useEffect(() => {
-        loadData();
+        apiService.identity.init();
         soundService.init();
+
+        apiService.identity.on('login', (user) => {
+            setNetlifyUser(user);
+            apiService.identity.close();
+        });
+
+        apiService.identity.on('logout', () => {
+            setNetlifyUser(null);
+            setUserProfile(null);
+            setUserData(null);
+        });
+
+        setNetlifyUser(apiService.identity.currentUser());
+
+        const fetchCatalog = async () => {
+            const catalog = await apiService.getCatCatalog();
+            setCatCatalog(catalog);
+        };
+        fetchCatalog();
+
     }, []);
 
+    // Effect to load user profile data when Netlify user is authenticated
     useEffect(() => {
-        if(phrases.length > 0) { // Only save after initial load
-            saveData();
+        const loadProfile = async () => {
+            if (netlifyUser) {
+                isReadyToSave.current = false;
+                setIsLoading(true);
+                const profile = await apiService.getUserProfile();
+                setUserProfile(profile); // Can be null if new user
+                setUserData(profile?.data ?? null);
+                setIsLoading(false);
+                if (profile) {
+                   isReadyToSave.current = true;
+                }
+            } else {
+                setIsLoading(false);
+            }
+        };
+        
+        if (catCatalog.length > 0) { // Ensure catalog is loaded before profile
+            loadProfile();
         }
-    }, [saveData, phrases.length]);
+
+    }, [netlifyUser, catCatalog]);
     
+    // Save data whenever it changes
+    useEffect(() => {
+        if (!isReadyToSave.current || !netlifyUser || !userData) {
+            return;
+        }
+        apiService.saveUserData(userData);
+    }, [userData, netlifyUser]);
+
     const showToast = (message: string) => {
         setToastMessage(message);
     }
+
+    const updateUserData = useCallback((updater: (prev: UserData) => UserData) => {
+        setUserData(prev => {
+            if (!prev) return null;
+            return updater(prev);
+        });
+    }, []);
     
     // --- XP and Leveling ---
     const addXp = useCallback((amount: number) => {
-        setPlayerStats(prevStats => {
-            let newXp = prevStats.xp + amount;
-            let newLevel = prevStats.level;
-            let xpToNext = prevStats.xpToNextLevel;
+        updateUserData(prev => {
+            let newXp = prev.playerStats.xp + amount;
+            let newLevel = prev.playerStats.level;
+            let xpToNext = prev.playerStats.xpToNextLevel;
 
             while (newXp >= xpToNext) {
                 newXp -= xpToNext;
@@ -122,25 +134,25 @@ const App: React.FC = () => {
                 showToast(`¡Subiste al nivel ${newLevel}!`);
                 soundService.play('reward');
             }
-            return { level: newLevel, xp: newXp, xpToNextLevel: xpToNext };
+            return { ...prev, playerStats: { level: newLevel, xp: newXp, xpToNextLevel: xpToNext } };
         });
-    }, []);
+    }, [updateUserData]);
 
     // --- Handlers ---
     const handleSelectImageClick = (phraseId: string) => {
-        const phrase = phrases.find(p => p.id === phraseId);
+        if(!userData) return;
+        const phrase = userData.phrases.find(p => p.id === phraseId);
         if (phrase) {
             setSelectedPhraseForEditing(phrase);
             setImageSelectorOpen(true);
         }
     };
 
-    const handleImageSelected = (phraseId: string, imageId: string | null) => {
-        setPhrases(prevPhrases =>
-            prevPhrases.map(p =>
-                p.id === phraseId ? { ...p, selectedImageId: imageId } : p
-            )
-        );
+    const handleImageSelected = (phraseId: string, imageId: number | null) => {
+        updateUserData(prev => ({
+            ...prev,
+            phrases: prev.phrases.map(p => p.id === phraseId ? { ...p, selectedImageId: imageId } : p)
+        }));
         soundService.play('select');
         setImageSelectorOpen(false);
     };
@@ -150,48 +162,54 @@ const App: React.FC = () => {
     };
 
     const handlePurchaseEnvelope = (envelopeId: EnvelopeTypeId) => {
+        if (!userData) return;
         const envelope = ENVELOPES[envelopeId];
-        const cost = envelope.baseCost + ((playerStats.level - 1) * envelope.costIncreasePerLevel);
-        if (coins < cost) return;
+        const cost = envelope.baseCost + ((userData.playerStats.level - 1) * envelope.costIncreasePerLevel);
+        if (userData.coins < cost) return;
 
         soundService.play('purchase');
-        setCoins(c => c - cost);
-        addXp(envelope.xp);
-        
-        const potentialNewImages = ALL_IMAGES_FLAT.filter(img => !unlockedImageIds.has(img.id));
-        potentialNewImages.sort(() => 0.5 - Math.random()); // Shuffle
+        const currentUnlockedIds = new Set(userData.unlockedImageIds);
+        const potentialNewImages = catCatalog.filter(img => !currentUnlockedIds.has(img.id));
+        potentialNewImages.sort(() => 0.5 - Math.random());
         const newImages = potentialNewImages.slice(0, envelope.imageCount);
         
         if (newImages.length > 0) {
-            setUnlockedImageIds(prevIds => {
-                const newIds = new Set(prevIds);
-                newImages.forEach(img => newIds.add(img.id));
-                return newIds;
-            });
+            const newImageIds = newImages.map(img => img.id);
+            updateUserData(prev => ({
+                ...prev,
+                coins: prev.coins - cost,
+                unlockedImageIds: [...prev.unlockedImageIds, ...newImageIds]
+            }));
+            addXp(envelope.xp);
+
             setNewlyUnlockedImages(newImages);
             setOpenedEnvelopeName(envelope.name);
             soundService.play('openEnvelope');
         } else {
             showToast("¡Ya tienes todos los gatos!");
-            setCoins(c => c + cost); // Refund if no images are available
         }
     };
     
     const handlePurchaseUpgrade = (upgradeId: UpgradeId) => {
+        if (!userData) return;
         const upgrade = Object.values(UPGRADES).find(u => u.id === upgradeId);
-        if (!upgrade || coins < upgrade.cost || purchasedUpgrades.has(upgradeId) || playerStats.level < upgrade.levelRequired) return;
+        if (!upgrade || userData.coins < upgrade.cost || userData.purchasedUpgrades.includes(upgradeId) || userData.playerStats.level < upgrade.levelRequired) return;
         
         soundService.play('purchase');
-        setCoins(c => c - upgrade.cost);
-        setPurchasedUpgrades(prev => new Set(prev).add(upgradeId));
+        updateUserData(prev => ({
+            ...prev,
+            coins: prev.coins - upgrade.cost,
+            purchasedUpgrades: [...prev.purchasedUpgrades, upgradeId]
+        }));
         showToast(`¡Mejora "${upgrade.name}" comprada!`);
     };
 
     const handleGameEnd = (results: { score: number; coinsEarned: number; xpEarned: number }) => {
-        const coinBonus = purchasedUpgrades.has('goldenPaw') ? Math.floor(results.coinsEarned * 0.5) : 0;
+        if(!userData) return;
+        const coinBonus = userData.purchasedUpgrades.includes('goldenPaw') ? Math.floor(results.coinsEarned * 0.5) : 0;
         const totalCoins = results.coinsEarned + coinBonus;
         
-        setCoins(c => c + totalCoins);
+        updateUserData(prev => ({ ...prev, coins: prev.coins + totalCoins }));
         addXp(results.xpEarned);
         setView('games');
         setActiveGameMode(null);
@@ -210,21 +228,25 @@ const App: React.FC = () => {
     };
     
     const handleOpenEditModal = (phraseId: string) => {
-        const phrase = phrases.find(p => p.id === phraseId);
+        if(!userData) return;
+        const phrase = userData.phrases.find(p => p.id === phraseId);
         if(phrase) {
             setEditingPhrase(phrase);
             setCustomPhraseModalOpen(true);
         }
     };
     
-    const handleSaveCustomPhrase = (phraseData: { text: string; selectedImageId: string | null }) => {
-        if (!phraseData.text || !phraseData.selectedImageId) {
+    const handleSaveCustomPhrase = (phraseData: { text: string; selectedImageId: number | null }) => {
+        if (!phraseData.text || phraseData.selectedImageId === null) {
             showToast("La frase debe tener texto y una imagen.");
             return;
         }
 
         if (editingPhrase) { // Update
-            setPhrases(prev => prev.map(p => p.id === editingPhrase.id ? { ...p, ...phraseData } : p));
+            updateUserData(prev => ({
+                ...prev,
+                phrases: prev.phrases.map(p => p.id === editingPhrase.id ? { ...p, ...phraseData } : p)
+            }));
             showToast("Frase actualizada.");
         } else { // Create
             const newPhrase: Phrase = {
@@ -233,7 +255,7 @@ const App: React.FC = () => {
                 selectedImageId: phraseData.selectedImageId,
                 isCustom: true,
             };
-            setPhrases(prev => [newPhrase, ...prev]);
+            updateUserData(prev => ({...prev, phrases: [newPhrase, ...prev.phrases]}));
             showToast("Frase creada.");
         }
         soundService.play('select');
@@ -241,17 +263,28 @@ const App: React.FC = () => {
     };
 
     const handleDeletePhrase = (phraseId: string) => {
-        setPhrases(prev => prev.filter(p => p.id !== phraseId));
+        updateUserData(prev => ({...prev, phrases: prev.phrases.filter(p => p.id !== phraseId)}));
         showToast("Frase eliminada.");
         soundService.play('favoriteOff');
         closeCustomPhraseModal();
     };
+
+    // Derived state from userData
+    const unlockedImages = useMemo(() => {
+        if (!userData) return [];
+        const unlockedIds = new Set(userData.unlockedImageIds);
+        return catCatalog.filter(img => unlockedIds.has(img.id));
+    }, [userData, catCatalog]);
+
+    const imageMap = useMemo(() => new Map(catCatalog.map(img => [img.id, img])), [catCatalog]);
     
     const renderContent = () => {
+        if (!userData) return null;
+
         if (view === 'playing' && activeGameMode) {
             const upgrades = {
-                betterBait: purchasedUpgrades.has('betterBait'),
-                extraTime: purchasedUpgrades.has('extraTime')
+                betterBait: userData.purchasedUpgrades.includes('betterBait'),
+                extraTime: userData.purchasedUpgrades.includes('extraTime')
             };
             if(activeGameMode.gameId === 'mouseHunt') {
                 return <MouseHuntGame mode={activeGameMode} upgrades={upgrades} onGameEnd={handleGameEnd} />;
@@ -270,7 +303,7 @@ const App: React.FC = () => {
         return (
             <>
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 p-4">
-                {phrases.map(phrase => {
+                {userData.phrases.map(phrase => {
                     const image = phrase.selectedImageId ? imageMap.get(phrase.selectedImageId) ?? null : null;
                     return (
                         <PhraseCard
@@ -287,7 +320,7 @@ const App: React.FC = () => {
             </div>
             <button
                 onClick={handleOpenCreateModal}
-                className="fixed bottom-6 right-6 bg-blue-600 hover:bg-blue-700 text-white rounded-full p-4 shadow-lg transition-transform hover:scale-110"
+                className="fixed bottom-6 right-6 bg-blue-600 hover:bg-blue-700 text-white rounded-full p-4 shadow-lg transition-transform hover:scale-110 animate-pulse-subtle"
                 aria-label="Crear nueva frase"
             >
                 <PlusIcon className="w-8 h-8" />
@@ -296,15 +329,53 @@ const App: React.FC = () => {
         )
     };
     
+    // --- Render Logic ---
+    if (isLoading || catCatalog.length === 0) {
+        return (
+            <div className="min-h-screen flex flex-col items-center justify-center text-slate-600">
+                <SpinnerIcon className="w-12 h-12 animate-spin mb-4" />
+                <p className="text-xl font-bold">Cargando PictoCat...</p>
+            </div>
+        );
+    }
+
+    if (!netlifyUser) {
+        return (
+            <div className="min-h-screen flex flex-col justify-center items-center p-4">
+                 <div className="w-full max-w-sm mx-auto bg-white rounded-xl shadow-2xl p-8 text-center">
+                    <CatSilhouetteIcon className="w-20 h-20 text-indigo-600 mb-2 mx-auto" />
+                    <h1 className="text-4xl font-black text-gray-800 tracking-tighter">PictoCat</h1>
+                    <p className="text-gray-600 mt-4 mb-8">Un juego de comunicación visual con gatos.</p>
+                    <button 
+                        onClick={() => apiService.identity.open()}
+                        className="w-full py-3 px-4 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-lg shadow-md transition-transform transform hover:scale-105"
+                    >
+                        Iniciar Sesión o Registrarse
+                    </button>
+                </div>
+            </div>
+        );
+    }
+
+    if (!userProfile || !userData) {
+        return <ProfileSetup onProfileCreated={(profile) => {
+            setUserProfile(profile);
+            setUserData(profile.data);
+            isReadyToSave.current = true;
+        }} />;
+    }
+
     return (
-        <div className="bg-gray-100 min-h-screen">
+        <div className="min-h-screen">
             <Header
-                coins={coins}
-                playerLevel={playerStats.level}
-                playerXp={playerStats.xp}
-                xpToNextLevel={playerStats.xpToNextLevel}
+                coins={userData.coins}
+                playerLevel={userData.playerStats.level}
+                playerXp={userData.playerStats.xp}
+                xpToNextLevel={userData.playerStats.xpToNextLevel}
                 onOpenShop={() => setView('shop')}
                 onOpenGames={() => setView('games')}
+                currentUser={userProfile.username}
+                onLogout={() => apiService.identity.logout()}
             />
 
             <main className="pt-24 pb-24">
@@ -317,7 +388,7 @@ const App: React.FC = () => {
                     onClose={() => setImageSelectorOpen(false)}
                     onSelectImage={handleImageSelected}
                     phrase={selectedPhraseForEditing}
-                    unlockedImageIds={unlockedImageIds}
+                    unlockedImages={unlockedImages}
                 />
             )}
            
@@ -333,11 +404,11 @@ const App: React.FC = () => {
                 <ShopModal
                     isOpen={view === 'shop'}
                     onClose={() => setView('main')}
-                    coins={coins}
-                    playerStats={playerStats}
+                    coins={userData.coins}
+                    playerStats={userData.playerStats}
                     onPurchaseEnvelope={handlePurchaseEnvelope}
                     onPurchaseUpgrade={handlePurchaseUpgrade}
-                    purchasedUpgrades={purchasedUpgrades}
+                    purchasedUpgrades={new Set(userData.purchasedUpgrades)}
                 />
             )}
             

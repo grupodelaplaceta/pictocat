@@ -36,7 +36,9 @@ const CatTriviaGame: React.FC<CatTriviaGameProps> = ({ mode, images, onGameEnd }
 
     useEffect(() => {
         const generateQuestions = () => {
-            const allThemes = Array.from(new Set(images.map(img => img.theme)));
+            // FIX: Explicitly type `allThemes` as `string[]`. The type inference was failing,
+            // causing `wrongAnswers` to be typed as `unknown[]`, which resulted in the error on line 51.
+            const allThemes: string[] = Array.from(new Set(images.map(img => img.theme)));
             // Fix: Explicitly provide the generic type to shuffleArray.
             // TypeScript's type inference for this generic function seems to be failing
             // in this context, causing downstream type errors.
@@ -47,8 +49,10 @@ const CatTriviaGame: React.FC<CatTriviaGameProps> = ({ mode, images, onGameEnd }
                 const imageForQ = shuffledImages[i];
                 const correctAnswer = imageForQ.theme;
                 const wrongAnswers = allThemes.filter(theme => theme !== correctAnswer);
-                const shuffledWrong = shuffleArray(wrongAnswers).slice(0, 3);
-                const options = shuffleArray([correctAnswer, ...shuffledWrong]);
+                // Fix: Explicitly providing the generic type `<string>` to `shuffleArray` to avoid type inference issues.
+                const shuffledWrong = shuffleArray<string>(wrongAnswers).slice(0, 3);
+                // Fix: Explicitly provide the generic type argument to `shuffleArray` to resolve the type error.
+                const options = shuffleArray<string>([correctAnswer, ...shuffledWrong]);
                 generatedQs.push({ image: imageForQ, options, correctAnswer });
             }
             setQuestions(generatedQs);
@@ -101,29 +105,29 @@ const CatTriviaGame: React.FC<CatTriviaGameProps> = ({ mode, images, onGameEnd }
     };
 
     if (questions.length === 0) {
-        return <div className="text-center p-8">Cargando preguntas...</div>;
+        return <div className="text-center p-8 font-bold text-slate-700">Cargando preguntas...</div>;
     }
 
     const currentQuestion = questions[currentQuestionIndex];
     const timePercentage = (timeLeft / mode.timePerQuestion) * 100;
 
     return (
-        <div className="w-full max-w-xl mx-auto p-4 bg-purple-100 rounded-lg shadow-lg border-4 border-purple-500 text-purple-900">
+        <div className="w-full max-w-xl mx-auto p-4 bg-amber-100 rounded-lg shadow-lg border-4 border-amber-500 text-amber-900">
             <header className="flex justify-between items-center mb-4 font-bold">
                 <div className="text-lg">Pregunta: {currentQuestionIndex + 1} / {questions.length}</div>
                 <div className="text-lg">Puntuación: {score}</div>
             </header>
             
-            <div className="w-full h-3 bg-purple-300 rounded-full mb-4 overflow-hidden">
+            <div className="w-full h-3 bg-amber-300 rounded-full mb-4 overflow-hidden">
                 <div 
-                    className="h-full bg-gradient-to-r from-green-400 to-blue-500 transition-all duration-1000 linear" 
+                    className="h-full bg-gradient-to-r from-orange-400 to-red-500 transition-all duration-1000 linear" 
                     style={{width: `${timePercentage}%`}}
                 />
             </div>
 
             <div className="bg-white p-4 rounded-lg shadow-md mb-4">
                 <p className="text-center font-semibold text-xl mb-4">¿A qué tema pertenece este gato?</p>
-                <div className="w-full h-64 rounded-lg overflow-hidden flex items-center justify-center">
+                <div className="w-full h-64 rounded-lg overflow-hidden flex items-center justify-center bg-slate-100">
                     <img src={currentQuestion.image.url} alt="Gato misterioso" className="max-w-full max-h-full object-contain" />
                 </div>
             </div>
@@ -132,14 +136,14 @@ const CatTriviaGame: React.FC<CatTriviaGameProps> = ({ mode, images, onGameEnd }
                 {currentQuestion.options.map(option => {
                     const isCorrect = option === currentQuestion.correctAnswer;
                     const isSelected = option === selectedAnswer;
-                    let buttonClass = 'bg-white hover:bg-purple-200';
+                    let buttonClass = 'bg-white hover:bg-amber-200 border-amber-300';
                     if (isAnswered) {
                         if (isCorrect) {
-                            buttonClass = 'bg-green-500 text-white';
+                            buttonClass = 'bg-green-500 text-white border-green-600 scale-105';
                         } else if (isSelected) {
-                            buttonClass = 'bg-red-500 text-white';
+                            buttonClass = 'bg-red-500 text-white border-red-600';
                         } else {
-                            buttonClass = 'bg-gray-300 opacity-60';
+                            buttonClass = 'bg-slate-300 opacity-60 border-slate-400';
                         }
                     }
                     return (
@@ -147,7 +151,7 @@ const CatTriviaGame: React.FC<CatTriviaGameProps> = ({ mode, images, onGameEnd }
                             key={option}
                             onClick={() => handleAnswer(option)}
                             disabled={isAnswered}
-                            className={`p-4 rounded-lg font-semibold text-center transition-all duration-300 transform disabled:cursor-not-allowed ${buttonClass}`}
+                            className={`p-4 rounded-lg font-bold text-center transition-all duration-300 transform disabled:cursor-not-allowed border-b-4 ${buttonClass}`}
                         >
                             {option}
                         </button>

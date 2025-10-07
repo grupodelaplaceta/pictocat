@@ -2,12 +2,12 @@
 export interface Phrase {
   id: string;
   text: string;
-  selectedImageId: string | null;
+  selectedImageId: number | null; // Changed to number to match DB IDs
   isCustom?: boolean;
 }
 
 export interface CatImage {
-  id:string;
+  id: number; // Changed to number (SERIAL PRIMARY KEY from DB)
   url: string;
   theme: string;
 }
@@ -41,6 +41,20 @@ export interface GameUpgrade {
   cost: number;
   levelRequired: number;
   icon: 'coin' | 'mouse' | 'time';
+}
+
+export interface UserProfile {
+  id: string; // From auth provider
+  username: string;
+  data: UserData;
+}
+
+export interface UserData {
+    phrases: Phrase[];
+    coins: number;
+    unlockedImageIds: number[];
+    playerStats: PlayerStats;
+    purchasedUpgrades: UpgradeId[];
 }
 
 // --- Game Mode Types ---

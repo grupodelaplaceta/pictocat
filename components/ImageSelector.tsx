@@ -1,21 +1,23 @@
 import React from 'react';
 import { CatImage, Phrase } from '../types';
 import { CloseIcon } from './Icons';
-import { MASTER_IMAGE_CATALOG } from '../initialData';
 
 interface ImageSelectorProps {
   isOpen: boolean;
   onClose: () => void;
-  onSelectImage: (phraseId: string, imageId: string | null) => void;
+  onSelectImage: (phraseId: string, imageId: number | null) => void;
   phrase: Phrase | null;
-  unlockedImageIds: Set<string>;
+  unlockedImages: CatImage[];
 }
 
-const ImageSelector: React.FC<ImageSelectorProps> = ({ isOpen, onClose, onSelectImage, phrase, unlockedImageIds }) => {
+const ImageSelector: React.FC<ImageSelectorProps> = ({ isOpen, onClose, onSelectImage, phrase, unlockedImages }) => {
   if (!isOpen || !phrase) return null;
 
-  const availableImages = MASTER_IMAGE_CATALOG[phrase.id] || [];
-  const unlockedPhraseImages = availableImages.filter(img => unlockedImageIds.has(img.id));
+  // For non-custom phrases, find images that share a theme with any of the default images for that phrase.
+  // This logic is a placeholder as the direct link from phrase->theme is gone.
+  // A better solution would be to tag phrases with themes.
+  const relevantImages = unlockedImages;
+
 
   return (
     <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4 animate-fadeIn">
@@ -27,7 +29,7 @@ const ImageSelector: React.FC<ImageSelectorProps> = ({ isOpen, onClose, onSelect
           </button>
         </header>
         <div className="flex-grow overflow-y-auto pr-2">
-          {unlockedPhraseImages.length > 0 ? (
+          {relevantImages.length > 0 ? (
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
               {/* Option to have no image */}
               <button
@@ -36,7 +38,7 @@ const ImageSelector: React.FC<ImageSelectorProps> = ({ isOpen, onClose, onSelect
               >
                   <span className="text-gray-500 text-lg">Ninguna</span>
               </button>
-              {unlockedPhraseImages.map(image => (
+              {relevantImages.map(image => (
                 <button
                   key={image.id}
                   onClick={() => onSelectImage(phrase.id, image.id)}

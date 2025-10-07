@@ -5,7 +5,7 @@ import { CloseIcon, TrashIcon } from './Icons';
 interface CustomPhraseModalProps {
     isOpen: boolean;
     onClose: () => void;
-    onSave: (data: { text: string; selectedImageId: string | null }) => void;
+    onSave: (data: { text: string; selectedImageId: number | null }) => void;
     onDelete: (phraseId: string) => void;
     phraseToEdit: Phrase | null;
     unlockedImages: CatImage[];
@@ -20,7 +20,7 @@ const CustomPhraseModal: React.FC<CustomPhraseModalProps> = ({
     unlockedImages
 }) => {
     const [text, setText] = useState('');
-    const [selectedImageId, setSelectedImageId] = useState<string | null>(null);
+    const [selectedImageId, setSelectedImageId] = useState<number | null>(null);
 
     useEffect(() => {
         if (phraseToEdit) {
