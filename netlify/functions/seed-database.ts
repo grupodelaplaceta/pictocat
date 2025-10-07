@@ -5,7 +5,7 @@ import { MASTER_IMAGE_CATALOG_DATA } from './_shared/catalog-data';
 
 export const handler: Handler = async () => {
   try {
-    const catsToInsert = Object.entries(MASTER_IMAGE_CATALOG_DATA)
+    const allCatsFromSource = Object.entries(MASTER_IMAGE_CATALOG_DATA)
       .flatMap(([_, images]) =>
         images.map(image => ({
           theme: image.theme,
@@ -14,21 +14,39 @@ export const handler: Handler = async () => {
         }))
       );
 
+    // Fetch IDs of cats already in the database to prevent errors
+    const existingCatsResult = await sql`SELECT original_id FROM cats`;
+    const existingIds = new Set(existingCatsResult.map((row: { original_id: string }) => row.original_id));
+
+    const catsToInsert = allCatsFromSource.filter(cat => !existingIds.has(cat.original_id));
+
     if (catsToInsert.length === 0) {
-      return { statusCode: 200, body: 'No new cats to insert.' };
+      const result = await sql`SELECT COUNT(*) FROM cats`;
+      const count = result[0].count;
+      return { 
+        statusCode: 200, 
+        body: JSON.stringify({
+          success: true,
+          message: 'Database is already up to date.',
+          totalCatsInDB: count
+        })
+      };
     }
     
-    // Use a transaction to insert cats one by one.
-    // This is more robust than a single large bulk insert and avoids potential query size issues.
-    await sql.begin(async (tx) => {
+    // Use a transaction to insert the new cats safely
+    await sql`BEGIN`;
+    try {
         for (const cat of catsToInsert) {
-            await tx`
+            await sql`
                 INSERT INTO cats (theme, url, original_id)
                 VALUES (${cat.theme}, ${cat.url}, ${cat.original_id})
-                ON CONFLICT (original_id) DO NOTHING
             `;
         }
-    });
+        await sql`COMMIT`;
+    } catch (e) {
+        await sql`ROLLBACK`;
+        throw e; // Rethrow to be caught by the outer block
+    }
 
     const result = await sql`SELECT COUNT(*) FROM cats`;
     const count = result[0].count;
@@ -38,7 +56,7 @@ export const handler: Handler = async () => {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ 
           success: true, 
-          message: 'Database seeded successfully!',
+          message: `Successfully inserted ${catsToInsert.length} new cats.`,
           totalCatsInDB: count 
       }),
     };

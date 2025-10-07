@@ -29,7 +29,7 @@
 </head>
 <body class="bg-slate-100">
     <div id="root"></div>
-    <!-- Change script type to text/babel and point to the .tsx file -->
-    <script type="text/babel" data-type="module" src="/index.tsx"></script>
+    <!-- Script tag now includes presets to correctly transpile TSX -->
+    <script type="text/babel" data-type="module" data-presets="react,typescript" src="/index.tsx"></script>
 </body>
 </html>
