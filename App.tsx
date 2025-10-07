@@ -26,6 +26,7 @@ const App: React.FC = () => {
     const [netlifyUser, setNetlifyUser] = useState<User | null>(null);
     const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
     const [isLoading, setIsLoading] = useState(true);
+    const [isCatalogLoaded, setIsCatalogLoaded] = useState(false);
     
     // --- Global Data ---
     const [catCatalog, setCatCatalog] = useState<CatImage[]>([]);
@@ -72,6 +73,7 @@ const App: React.FC = () => {
         const fetchCatalog = async () => {
             const catalog = await apiService.getCatCatalog();
             setCatCatalog(catalog);
+            setIsCatalogLoaded(true);
         };
         fetchCatalog();
 
@@ -95,11 +97,11 @@ const App: React.FC = () => {
             }
         };
         
-        if (catCatalog.length > 0) { // Ensure catalog is loaded before profile
+        if (isCatalogLoaded) { // Ensure catalog is loaded before profile
             loadProfile();
         }
 
-    }, [netlifyUser, catCatalog]);
+    }, [netlifyUser, isCatalogLoaded]);
     
     // Save data whenever it changes
     useEffect(() => {
@@ -330,7 +332,7 @@ const App: React.FC = () => {
     };
     
     // --- Render Logic ---
-    if (isLoading || catCatalog.length === 0) {
+    if (isLoading || !isCatalogLoaded) {
         return (
             <div className="min-h-screen flex flex-col items-center justify-center text-slate-600">
                 <SpinnerIcon className="w-12 h-12 animate-spin mb-4" />
