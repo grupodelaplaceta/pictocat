@@ -18,10 +18,10 @@ export const handler: Handler = async () => {
       return { statusCode: 200, body: 'No new cats to insert.' };
     }
     
-    // Use `ON CONFLICT` to prevent inserting duplicates if the function is run multiple times.
+    // Corrected SQL for bulk insert using the postgres.js helper format.
+    // The sql(...) helper generates the full "(columns) VALUES (rows...)" statement.
     await sql`
-        INSERT INTO cats (theme, url, original_id)
-        SELECT theme, url, original_id FROM ${sql(catsToInsert, 'theme', 'url', 'original_id')}
+        INSERT INTO cats (theme, url, original_id) ${sql(catsToInsert, 'theme', 'url', 'original_id')}
         ON CONFLICT (original_id) DO NOTHING
     `;
 
