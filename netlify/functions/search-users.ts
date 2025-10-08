@@ -1,6 +1,6 @@
 // netlify/functions/search-users.ts
 import { Handler, HandlerContext } from '@netlify/functions';
-import sql from './db';
+import getDb from './db';
 
 export const handler: Handler = async (event, context: HandlerContext) => {
   const { user } = context.clientContext;
@@ -14,18 +14,19 @@ export const handler: Handler = async (event, context: HandlerContext) => {
   }
 
   try {
-    // Use ILIKE for case-insensitive search and '%' for wildcard matching
-    const searchPattern = `%${query}%`;
-    const users = await sql`
-        SELECT username, is_verified
-        FROM users
-        WHERE username ILIKE ${searchPattern}
-        LIMIT 10
-    `;
+    const db = await getDb();
+    const usersCollection = db.collection('users');
+
+    const searchPattern = new RegExp(query, 'i');
+    const usersCursor = usersCollection.find(
+        { username: { $regex: searchPattern } },
+        { projection: { username: 1, isVerified: 1 }, limit: 10 }
+    );
+    const users = await usersCursor.toArray();
 
     const searchResults = users.map(u => ({
         username: u.username,
-        isVerified: u.is_verified
+        isVerified: u.isVerified
     }));
 
     return {

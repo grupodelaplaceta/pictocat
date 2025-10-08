@@ -1,8 +1,10 @@
 import React from 'react';
-import { identity } from '../services/apiService';
+import { useAuth0 } from '@auth0/auth0-react';
 import { LOGO_URL } from '../constants';
 
 const Auth: React.FC = () => {
+  const { loginWithRedirect } = useAuth0();
+
   return (
     <div className="min-h-screen flex flex-col justify-center items-center p-4 bg-wheat">
       <div className="w-full max-w-sm mx-auto bg-seasalt rounded-2xl p-8 border-4 border-liver shadow-[8px_8px_0_#6A4A3D]">
@@ -16,7 +18,7 @@ const Auth: React.FC = () => {
         </p>
 
         <button
-          onClick={() => identity.open()}
+          onClick={() => loginWithRedirect()}
           className="w-full btn-cartoon btn-cartoon-primary"
         >
           Iniciar Sesión / Registrarse

@@ -3,6 +3,7 @@ import { useDebounce } from '../hooks/useDebounce';
 import * as apiService from '../services/apiService';
 import { SearchableUser } from '../types';
 import { SearchIcon, SpinnerIcon, VerifiedIcon, UsersIcon } from '../hooks/Icons';
+import { useAuth0 } from '@auth0/auth0-react';
 
 interface UserSearchProps {
     onSelectUser: (username: string) => void;
@@ -13,6 +14,7 @@ const UserSearch: React.FC<UserSearchProps> = ({ onSelectUser }) => {
     const [results, setResults] = useState<SearchableUser[]>([]);
     const [isLoading, setIsLoading] = useState(false);
     const [hasSearched, setHasSearched] = useState(false);
+    const { getAccessTokenSilently } = useAuth0();
 
     const performSearch = useCallback(async (searchQuery: string) => {
         if (searchQuery.length < 2) {
@@ -21,11 +23,13 @@ const UserSearch: React.FC<UserSearchProps> = ({ onSelectUser }) => {
             return;
         }
         setIsLoading(true);
-        const users = await apiService.searchUsers(searchQuery);
+        // FIX: Pass the authentication token to the searchUsers API call.
+        const token = await getAccessTokenSilently();
+        const users = await apiService.searchUsers(token, searchQuery);
         setResults(users);
         setIsLoading(false);
         setHasSearched(true);
-    }, []);
+    }, [getAccessTokenSilently]);
 
     useDebounce(() => performSearch(query), 500, [query]);
 

@@ -1,38 +1,31 @@
-// services/apiService.ts
-// FIX: Import new types required for community features.
 import { CatImage, UserData, UserProfile, AdminUserView, PublicPhrase, Phrase, SearchableUser, PublicProfileData } from '../types';
-import netlifyIdentity from 'netlify-identity-widget';
 
-const BASE_PATH = '/.netlify/functions';
-
-// --- Netlify Identity Wrapper ---
-export const identity = netlifyIdentity;
-
+const BASE_PATH = '/api';
 
 // --- API Helper ---
-const authedFetch = async (endpoint: string, options: RequestInit = {}) => {
-    const user = identity.currentUser();
-    if (!user) {
-        throw new Error("User not authenticated");
+const authedFetch = async (endpoint: string, token: string, options: RequestInit = {}) => {
+    if (!token) {
+        throw new Error("Auth token not provided");
     }
-
-    // FIX: The type definitions for netlify-identity-widget may be out of date.
-    // The user object has a jwt() method, so we cast to any to bypass the type error.
-    const token = await (user as any).jwt();
     
     const headers = {
         ...options.headers,
         'Authorization': `Bearer ${token}`
     };
 
-    return fetch(`${BASE_PATH}/${endpoint}`, { ...options, headers });
+    const response = await fetch(`${BASE_PATH}/${endpoint}`, { ...options, headers });
+    
+    if (!response.ok) {
+        const errorBody = await response.text();
+        console.error(`API Error on ${endpoint}: ${response.status} ${response.statusText}`, errorBody);
+        throw new Error(`Failed on endpoint ${endpoint}. Status: ${response.status}`);
+    }
+
+    return response;
 };
 
 // --- API Functions ---
 
-/**
- * Fetches the entire catalog of cat images from the database.
- */
 export const getCatCatalog = async (): Promise<CatImage[]> => {
     try {
         const response = await fetch(`${BASE_PATH}/get-catalog`);
@@ -44,59 +37,33 @@ export const getCatCatalog = async (): Promise<CatImage[]> => {
     }
 };
 
-/**
- * Fetches the profile and data for the currently logged-in user.
- */
-export const getUserProfile = async (): Promise<UserProfile | null> => {
+export const getUserProfile = async (token: string): Promise<UserProfile | null> => {
     try {
-        const response = await authedFetch('getUserData');
+        const response = await authedFetch('getUserData', token);
         if (response.status === 404) {
-            return null; // New user, no profile yet
-        }
-        if (!response.ok) {
-            // This will be caught by the catch block below
-            throw new Error(`Failed to fetch user data. Status: ${response.status}`);
+            return null; 
         }
         return await response.json();
     } catch (error) {
         console.error('Get user profile failed:', error);
-        // Re-throw the error to be handled by the caller
         throw error;
     }
 };
 
-/**
- * Saves the game data for the currently logged-in user.
- * @param data The complete user game data object.
- */
-export const saveUserData = async (data: UserData): Promise<void> => {
+export const saveUserData = async (token: string, data: UserData): Promise<void> => {
      try {
-        const response = await authedFetch('saveUserData', {
+        await authedFetch('saveUserData', token, {
             method: 'POST',
             body: JSON.stringify({ data }),
         });
-        if (!response.ok) {
-           throw new Error('Failed to save data');
-        }
     } catch (error) {
         console.error('Save user data failed:', error);
     }
 };
 
-// FIX: Add a deprecated placeholder function to resolve a compilation error in an unused component.
-/**
- * @deprecated This function is a placeholder. User profiles are now created automatically on signup.
- */
-export const createProfile = async (): Promise<{ success: boolean; profile?: UserProfile; message?: string; }> => {
-    console.warn('`createProfile` is deprecated. Profiles are created automatically via a webhook.');
-    return { success: false, message: 'This function is deprecated and should not be used.' };
-};
-
-// FIX: Add function to search for users to resolve call error in UserSearch component.
-export const searchUsers = async (query: string): Promise<SearchableUser[]> => {
+export const searchUsers = async (token: string, query: string): Promise<SearchableUser[]> => {
     try {
-        const response = await authedFetch(`search-users?q=${encodeURIComponent(query)}`);
-        if (!response.ok) throw new Error('Failed to search users');
+        const response = await authedFetch(`search-users?q=${encodeURIComponent(query)}`, token);
         return await response.json();
     } catch (error) {
         console.error('Search users failed:', error);
@@ -104,21 +71,14 @@ export const searchUsers = async (query: string): Promise<SearchableUser[]> => {
     }
 };
 
-// FIX: Add function to get a user's public profile data.
-export const getPublicProfile = async (username: string): Promise<PublicProfileData> => {
-    const response = await authedFetch(`get-public-profile?username=${encodeURIComponent(username)}`);
-    if (!response.ok) {
-        if (response.status === 404) {
-            throw new Error('User not found');
-        }
-        throw new Error('Failed to fetch public profile');
-    }
+export const getPublicProfile = async (token: string, username: string): Promise<PublicProfileData> => {
+    const response = await authedFetch(`get-public-profile?username=${encodeURIComponent(username)}`, token);
     return await response.json();
 };
 
-export const publishPhrase = async (phrase: Phrase, image: CatImage, isPublic: boolean): Promise<void> => {
+export const publishPhrase = async (token: string, phrase: Phrase, image: CatImage, isPublic: boolean): Promise<void> => {
     try {
-        await authedFetch('publish-phrase', {
+        await authedFetch('publish-phrase', token, {
             method: 'POST',
             body: JSON.stringify({ phrase, image, isPublic })
         });
@@ -128,12 +88,11 @@ export const publishPhrase = async (phrase: Phrase, image: CatImage, isPublic: b
 };
 
 
-// --- New Admin Functions ---
+// --- Admin Functions ---
 
-export const adminGetAllUsers = async (): Promise<AdminUserView[]> => {
+export const adminGetAllUsers = async (token: string): Promise<AdminUserView[]> => {
     try {
-        const response = await authedFetch('admin-get-users');
-        if (!response.ok) throw new Error('Failed to fetch users for admin');
+        const response = await authedFetch('admin-get-users', token);
         return await response.json();
     } catch (error) {
         console.error('Admin get users failed:', error);
@@ -141,23 +100,22 @@ export const adminGetAllUsers = async (): Promise<AdminUserView[]> => {
     }
 };
 
-export const adminSetVerifiedStatus = async (userId: string, isVerified: boolean): Promise<boolean> => {
+export const adminSetVerifiedStatus = async (token: string, userId: string, isVerified: boolean): Promise<boolean> => {
      try {
-        const response = await authedFetch('admin-set-verified', {
+        await authedFetch('admin-set-verified', token, {
             method: 'POST',
             body: JSON.stringify({ userId, isVerified })
         });
-        return response.ok;
+        return true;
     } catch (error) {
         console.error('Admin set verified status failed:', error);
         return false;
     }
 };
 
-export const adminGetPublicPhrases = async (): Promise<PublicPhrase[]> => {
+export const adminGetPublicPhrases = async (token: string): Promise<PublicPhrase[]> => {
      try {
-        const response = await authedFetch('admin-get-public-phrases');
-        if (!response.ok) throw new Error('Failed to fetch public phrases for admin');
+        const response = await authedFetch('admin-get-public-phrases', token);
         return await response.json();
     } catch (error) {
         console.error('Admin get public phrases failed:', error);
@@ -165,13 +123,13 @@ export const adminGetPublicPhrases = async (): Promise<PublicPhrase[]> => {
     }
 };
 
-export const adminCensorPhrase = async (publicPhraseId: number): Promise<boolean> => {
+export const adminCensorPhrase = async (token: string, publicPhraseId: number): Promise<boolean> => {
     try {
-        const response = await authedFetch('admin-censor-phrase', {
+        await authedFetch('admin-censor-phrase', token, {
             method: 'POST',
             body: JSON.stringify({ publicPhraseId })
         });
-        return response.ok;
+        return true;
     } catch (error) {
         console.error('Admin censor phrase failed:', error);
         return false;

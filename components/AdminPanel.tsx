@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import * as apiService from '../services/apiService';
 import { AdminUserView, PublicPhrase } from '../types';
 import { SearchIcon, SpinnerIcon, TrashIcon, VerifiedIcon } from '../hooks/Icons';
+import { useAuth0 } from '@auth0/auth0-react';
 
 type AdminTab = 'users' | 'content';
 
@@ -9,6 +10,7 @@ const AdminPanel: React.FC = () => {
     const [activeTab, setActiveTab] = useState<AdminTab>('users');
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState('');
+    const { getAccessTokenSilently } = useAuth0();
 
     const [users, setUsers] = useState<AdminUserView[]>([]);
     const [phrases, setPhrases] = useState<PublicPhrase[]>([]);
@@ -19,9 +21,11 @@ const AdminPanel: React.FC = () => {
         setIsLoading(true);
         setError('');
         try {
+            // FIX: Pass the authentication token to the API calls.
+            const token = await getAccessTokenSilently();
             const [userData, phraseData] = await Promise.all([
-                apiService.adminGetAllUsers(),
-                apiService.adminGetPublicPhrases()
+                apiService.adminGetAllUsers(token),
+                apiService.adminGetPublicPhrases(token)
             ]);
             setUsers(userData);
             setPhrases(phraseData);
@@ -30,14 +34,16 @@ const AdminPanel: React.FC = () => {
         } finally {
             setIsLoading(false);
         }
-    }, []);
+    }, [getAccessTokenSilently]);
 
     useEffect(() => {
         fetchData();
     }, [fetchData]);
 
     const handleToggleVerified = async (userId: string, currentStatus: boolean) => {
-        const success = await apiService.adminSetVerifiedStatus(userId, !currentStatus);
+        // FIX: Pass the authentication token to the API call.
+        const token = await getAccessTokenSilently();
+        const success = await apiService.adminSetVerifiedStatus(token, userId, !currentStatus);
         if (success) {
             setUsers(prevUsers =>
                 prevUsers.map(u => u.id === userId ? { ...u, isVerified: !currentStatus } : u)
@@ -46,7 +52,9 @@ const AdminPanel: React.FC = () => {
     };
 
     const handleCensorPhrase = async (publicPhraseId: number) => {
-        const success = await apiService.adminCensorPhrase(publicPhraseId);
+        // FIX: Pass the authentication token to the API call.
+        const token = await getAccessTokenSilently();
+        const success = await apiService.adminCensorPhrase(token, publicPhraseId);
         if (success) {
             setPhrases(prevPhrases => prevPhrases.filter(p => p.publicPhraseId !== publicPhraseId));
         }

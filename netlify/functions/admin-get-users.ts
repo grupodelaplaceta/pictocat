@@ -1,27 +1,33 @@
 // netlify/functions/admin-get-users.ts
 import { Handler, HandlerContext } from '@netlify/functions';
-import sql from './db';
+import getDb from './db';
 
 export const handler: Handler = async (event, context: HandlerContext) => {
     const { user } = context.clientContext;
-    // @ts-ignore
-    const roles = user?.app_metadata?.roles || [];
-    if (!user || !roles.includes('admin')) {
-        return { statusCode: 401, body: 'Unauthorized: Admins only.' };
+    if (!user) {
+        return { statusCode: 401, body: 'Unauthorized' };
     }
 
     try {
-        const users = await sql`
-            SELECT id, username, role, is_verified
-            FROM users
-            ORDER BY username ASC
-        `;
+        const db = await getDb();
+        const usersCollection = db.collection('users');
+
+        const requestingUser = await usersCollection.findOne({ _id: user.sub });
+        if (!requestingUser || requestingUser.role !== 'admin') {
+            return { statusCode: 403, body: 'Forbidden: Admins only.' };
+        }
+
+        const usersCursor = usersCollection.find({}, {
+            projection: { _id: 1, username: 1, role: 1, isVerified: 1 },
+            sort: { username: 1 }
+        });
+        const users = await usersCursor.toArray();
 
         const result = users.map(u => ({
-            id: u.id,
-            email: u.username, // 'username' column stores the email
+            id: u._id,
+            email: u.username,
             role: u.role,
-            isVerified: u.is_verified
+            isVerified: u.isVerified
         }));
 
         return {

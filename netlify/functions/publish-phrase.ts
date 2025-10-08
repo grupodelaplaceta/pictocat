@@ -1,6 +1,6 @@
 // netlify/functions/publish-phrase.ts
 import { Handler, HandlerContext } from '@netlify/functions';
-import sql from './db';
+import getDb from './db';
 
 export const handler: Handler = async (event, context: HandlerContext) => {
     if (event.httpMethod !== 'POST') {
@@ -19,38 +19,37 @@ export const handler: Handler = async (event, context: HandlerContext) => {
             return { statusCode: 400, body: 'Invalid phrase data provided.' };
         }
         
-        // Atomically update both the public table and the user's data blob
-        await sql.begin(async (sql) => {
-            // Step 1: Update the public_phrases table
-            if (isPublic) {
-                // Insert or update the public phrase. Using user_id and phrase_id as a unique key.
-                await sql`
-                    INSERT INTO public_phrases (user_id, phrase_id, text, image_url, image_theme)
-                    VALUES (${user.sub}, ${phrase.id}, ${phrase.text}, ${image.url}, ${image.theme})
-                    ON CONFLICT (user_id, phrase_id)
-                    DO UPDATE SET
-                        text = EXCLUDED.text,
-                        image_url = EXCLUDED.image_url,
-                        image_theme = EXCLUDED.image_theme
-                `;
-            } else {
-                // Remove from public phrases
-                await sql`DELETE FROM public_phrases WHERE user_id = ${user.sub} AND phrase_id = ${phrase.id}`;
-            }
+        const db = await getDb();
+        const publicPhrasesCollection = db.collection('public_phrases');
+        const usersCollection = db.collection('users');
 
-            // Step 2: Update the isPublic flag within the user's JSON data
-            // This is complex with jsonb. We fetch, update in JS, then write back.
-            const userDataResult = await sql`SELECT data FROM users WHERE id = ${user.sub}`;
-            if (userDataResult.length > 0) {
-                const userData = userDataResult[0].data;
-                const phraseIndex = userData.phrases.findIndex(p => p.id === phrase.id);
-
-                if (phraseIndex > -1) {
-                    userData.phrases[phraseIndex].isPublic = isPublic;
-                    await sql`UPDATE users SET data = ${JSON.stringify(userData)} WHERE id = ${user.sub}`;
-                }
+        if (isPublic) {
+            const userData = await usersCollection.findOne({ _id: user.sub }, { projection: { username: 1 }});
+             if (!userData) {
+                return { statusCode: 404, body: 'User not found.' };
             }
-        });
+            await publicPhrasesCollection.updateOne(
+                { userId: user.sub, phraseId: phrase.id },
+                { 
+                    $set: {
+                        userId: user.sub,
+                        phraseId: phrase.id,
+                        username: userData.username,
+                        text: phrase.text,
+                        imageUrl: image.url,
+                        imageTheme: image.theme
+                    }
+                },
+                { upsert: true }
+            );
+        } else {
+            await publicPhrasesCollection.deleteOne({ userId: user.sub, phraseId: phrase.id });
+        }
+
+        await usersCollection.updateOne(
+            { _id: user.sub, 'phrases.id': phrase.id },
+            { $set: { 'phrases.$.isPublic': isPublic } }
+        );
 
         return {
             statusCode: 200,

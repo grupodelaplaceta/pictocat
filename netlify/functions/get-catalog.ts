@@ -1,14 +1,25 @@
 // netlify/functions/get-catalog.ts
 import { Handler } from '@netlify/functions';
-import sql from './db';
+import getDb from './db';
+import { CatImage } from '../../types';
 
 export const handler: Handler = async () => {
   try {
-    const cats = await sql`SELECT id, theme, url FROM cats ORDER BY id`;
+    const db = await getDb();
+    const catsCollection = db.collection('cats');
+
+    const catsFromDb = await catsCollection.find({}).toArray();
+
+    const catCatalog: CatImage[] = catsFromDb.map((cat, index) => ({
+      id: index + 1, // Using index as a temporary numeric ID for frontend compatibility
+      url: cat.url,
+      theme: cat.theme
+    }));
+
     return {
       statusCode: 200,
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(cats),
+      body: JSON.stringify(catCatalog),
     };
   } catch (error) {
     console.error('Get catalog error:', error);

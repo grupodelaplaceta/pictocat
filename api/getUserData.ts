@@ -1,34 +1,34 @@
-// netlify/functions/getUserData.ts
-import { Handler, HandlerContext } from '@netlify/functions';
-import getDb from './db';
+// api/getUserData.ts
+import { VercelRequest, VercelResponse } from '@vercel/node';
+import { getDb } from './_utils/mongodb';
 import { getInitialUserData } from './_shared/data';
-import { UserProfile } from '../../types';
+import { verifyToken } from './_utils/auth';
+import { UserProfile } from '../types';
 
-export const handler: Handler = async (event, context: HandlerContext) => {
-  if (event.httpMethod !== 'GET') {
-    return { statusCode: 405, body: 'Method Not Allowed' };
+export default async function handler(req: VercelRequest, res: VercelResponse) {
+  if (req.method !== 'GET') {
+    return res.status(405).send('Method Not Allowed');
   }
   
-  const { user } = context.clientContext;
-  if (!user) {
-      return { statusCode: 401, body: 'Unauthorized' };
-  }
-
   try {
+    const decodedToken = await verifyToken(req.headers.authorization);
+    const userId = decodedToken.sub;
+    
     const db = await getDb();
     const usersCollection = db.collection('users');
-    let userFromDb = await usersCollection.findOne({ _id: user.sub });
+    let userFromDb = await usersCollection.findOne({ _id: userId });
 
     if (!userFromDb) {
-      console.log(`Profile not found for user ${user.sub}. Attempting JIT creation.`);
+      console.log(`Profile not found for user ${userId}. Attempting JIT creation.`);
       
-      if (!user.email) {
-        throw new Error(`Cannot create profile JIT: user object for ${user.sub} is missing an email address.`);
+      const userEmail = decodedToken.email;
+      if (!userEmail) {
+        throw new Error(`Cannot create profile JIT: user token for ${userId} is missing an email claim.`);
       }
 
       const initialData = getInitialUserData();
       
-      const baseUsername = `@${user.email.split('@')[0].replace(/[^a-zA-Z0-9_]/g, '').slice(0, 20)}`;
+      const baseUsername = `@${userEmail.split('@')[0].replace(/[^a-zA-Z0-9_]/g, '').slice(0, 20)}`;
       let finalUsername = baseUsername;
       
       let usernameCheck = await usersCollection.findOne({ username: finalUsername });
@@ -39,9 +39,9 @@ export const handler: Handler = async (event, context: HandlerContext) => {
       }
 
       const newUserDoc = {
-        _id: user.sub,
+        _id: userId,
         username: finalUsername,
-        email: user.email,
+        email: userEmail,
         role: 'user',
         isVerified: true,
         ...initialData
@@ -51,9 +51,10 @@ export const handler: Handler = async (event, context: HandlerContext) => {
       userFromDb = newUserDoc;
     }
     
+    // Reconstruct the nested 'data' object for the frontend
     const userProfile: UserProfile = {
       id: userFromDb._id,
-      email: userFromDb.username,
+      email: userFromDb.username, // Frontend uses 'email' field for the username
       role: userFromDb.role || 'user',
       isVerified: userFromDb.isVerified || false,
       data: {
@@ -65,13 +66,13 @@ export const handler: Handler = async (event, context: HandlerContext) => {
       }
     };
 
-    return {
-      statusCode: 200,
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(userProfile),
-    };
+    return res.status(200).json(userProfile);
+
   } catch (error) {
     console.error('Get/Create user data error:', error);
-    return { statusCode: 500, body: 'Internal Server Error' };
+    if (error.name === 'JsonWebTokenError' || error.name === 'TokenExpiredError') {
+      return res.status(401).send('Unauthorized');
+    }
+    return res.status(500).send('Internal Server Error');
   }
-};
+}

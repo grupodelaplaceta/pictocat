@@ -1,5 +1,5 @@
 import React from 'react';
-import { CoinIcon, GameIcon, GiftIcon, StarIcon, AdminIcon } from './Icons';
+import { CoinIcon, GameIcon, GiftIcon, StarIcon, AdminIcon, UsersIcon, EditIcon } from './Icons';
 
 interface HeaderProps {
   coins: number;
@@ -8,20 +8,25 @@ interface HeaderProps {
   xpToNextLevel: number;
   onOpenShop: () => void;
   onOpenGames: () => void;
-  onOpenAdmin: () => void; 
+  onOpenAdmin: () => void;
+  onOpenCommunity: () => void;
+  onGoToMain: () => void;
   currentUser: string | null;
   onLogout: () => void;
-  isAdmin: boolean; 
+  isAdmin: boolean;
+  activeView: 'main' | 'game' | 'admin' | 'community';
 }
 
 const Header: React.FC<HeaderProps> = ({ 
     coins, playerLevel, playerXp, xpToNextLevel, 
-    onOpenShop, onOpenGames, onOpenAdmin,
-    currentUser, onLogout, isAdmin 
+    onOpenShop, onOpenGames, onOpenAdmin, onOpenCommunity, onGoToMain,
+    currentUser, onLogout, isAdmin, activeView
 }) => {
   const xpPercentage = xpToNextLevel > 0 ? (playerXp / xpToNextLevel) * 100 : 0;
   // The currentUser prop now contains the @username directly.
   const displayName = currentUser || '';
+
+  const isMainView = activeView === 'main';
 
   return (
     <header className="fixed top-0 left-0 right-0 bg-seasalt p-2 z-40 flex items-center justify-between text-liver font-bold border-b-4 border-liver">
@@ -45,6 +50,12 @@ const Header: React.FC<HeaderProps> = ({
       {/* Right side: Actions, Coins, User */}
       <div className="flex items-center gap-2 sm:gap-4">
         <div className="flex items-center gap-2">
+            {!isMainView && (
+                 <button onClick={onGoToMain} className="action-button bg-wheat">
+                    <EditIcon className="w-5 h-5" />
+                    <span className="hidden md:inline">Mis Frases</span>
+                </button>
+            )}
             <button onClick={onOpenShop} className="action-button bg-buff">
                 <GiftIcon className="w-5 h-5" />
                 <span className="hidden md:inline">Tienda</span>
@@ -52,6 +63,10 @@ const Header: React.FC<HeaderProps> = ({
             <button onClick={onOpenGames} className="action-button bg-uranian_blue">
                 <GameIcon className="w-5 h-5" />
                 <span className="hidden md:inline">Juegos</span>
+            </button>
+             <button onClick={onOpenCommunity} className="action-button bg-wheat">
+                <UsersIcon className="w-5 h-5" />
+                <span className="hidden md:inline">Comunidad</span>
             </button>
             {isAdmin && (
                 <button onClick={onOpenAdmin} className="action-button bg-buff">

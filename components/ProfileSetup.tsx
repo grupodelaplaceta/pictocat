@@ -3,6 +3,7 @@ import { SpinnerIcon } from '../hooks/Icons';
 import * as apiService from '../services/apiService';
 import { UserProfile } from '../types';
 import { LOGO_URL } from '../constants';
+import { useAuth0 } from '@auth0/auth0-react';
 
 interface ProfileSetupProps {
   onProfileCreated: (profile: UserProfile) => void;
@@ -12,6 +13,7 @@ const ProfileSetup: React.FC<ProfileSetupProps> = ({ onProfileCreated }) => {
   const [username, setUsername] = useState('');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const { getAccessTokenSilently } = useAuth0();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -25,13 +27,14 @@ const ProfileSetup: React.FC<ProfileSetupProps> = ({ onProfileCreated }) => {
     setIsLoading(true);
     
     try {
-      // FIX: The createProfile function does not take any arguments.
-      // It uses the authenticated user's context on the backend.
-      const result = await apiService.createProfile();
-      if (result.success && result.profile) {
-        onProfileCreated(result.profile);
+      // FIX: The createProfile function was removed. Using getUserProfile, which now handles
+      // Just-In-Time profile creation on the backend. The username is auto-generated.
+      const token = await getAccessTokenSilently();
+      const profile = await apiService.getUserProfile(token);
+      if (profile) {
+        onProfileCreated(profile);
       } else {
-        setError(result.message || 'No se pudo crear el perfil.');
+        setError('No se pudo crear el perfil.');
       }
     } catch (e) {
         setError('Ocurrió un error de red. Inténtalo de nuevo.');

@@ -1,8 +1,5 @@
 // netlify/functions/db.ts
-import { neon } from '@netlify/neon';
+// This file is adapted to use the shared MongoDB connection utility.
+import { getDb } from '../../api/_utils/mongodb';
 
-// This automatically uses the NETLIFY_DATABASE_URL environment variable
-// provided by the Netlify Neon integration.
-const sql = neon();
-
-export default sql;
+export default getDb;

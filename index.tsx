@@ -1,5 +1,6 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
+import { Auth0Provider } from '@auth0/auth0-react';
 // FIX: Correct the import path to resolve the module not found error.
 import App from './App';
 
@@ -18,7 +19,18 @@ function main() {
   const root = ReactDOM.createRoot(rootElement);
   root.render(
     <React.StrictMode>
-      <App />
+      <Auth0Provider
+        domain="pictocat-vib.us.auth0.com"
+        clientId="Paj4KYinyLpTmKSUXYzcSZqU9AyATKG3"
+        authorizationParams={{
+          redirect_uri: window.location.origin,
+          // Request audience and scopes for API access and user info
+          audience: `https://pictocat-vib.us.auth0.com/api/v2/`,
+          scope: "openid profile email"
+        }}
+      >
+        <App />
+      </Auth0Provider>
     </React.StrictMode>
   );
 }

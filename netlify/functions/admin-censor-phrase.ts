@@ -1,6 +1,7 @@
 // netlify/functions/admin-censor-phrase.ts
 import { Handler, HandlerContext } from '@netlify/functions';
-import sql from './db';
+import getDb from './db';
+import { ObjectId } from 'mongodb';
 
 export const handler: Handler = async (event, context: HandlerContext) => {
     if (event.httpMethod !== 'POST') {
@@ -8,45 +9,36 @@ export const handler: Handler = async (event, context: HandlerContext) => {
     }
 
     const { user } = context.clientContext;
-    // @ts-ignore
-    const roles = user?.app_metadata?.roles || [];
-    if (!user || !roles.includes('admin')) {
-        return { statusCode: 401, body: 'Unauthorized: Admins only.' };
+    if (!user) {
+        return { statusCode: 401, body: 'Unauthorized' };
     }
 
     try {
+        const db = await getDb();
+        const usersCollection = db.collection('users');
+        const publicPhrasesCollection = db.collection('public_phrases');
+
+        const requestingUser = await usersCollection.findOne({ _id: user.sub });
+        if (!requestingUser || requestingUser.role !== 'admin') {
+            return { statusCode: 403, body: 'Forbidden: Admins only.' };
+        }
+
         const { publicPhraseId } = JSON.parse(event.body || '{}');
 
         if (!publicPhraseId) {
             return { statusCode: 400, body: 'publicPhraseId is required.' };
         }
 
-        await sql.begin(async (sql) => {
-            // Find the original phrase to get the user_id and phrase_id
-            const phraseInfoResult = await sql`
-                SELECT user_id, phrase_id FROM public_phrases WHERE id = ${publicPhraseId}
-            `;
+        const phraseToDelete = await publicPhrasesCollection.findOne({ _id: new ObjectId(publicPhraseId) });
 
-            if (phraseInfoResult.length === 0) {
-                // Phrase might have already been deleted, which is fine.
-                return;
-            }
-            const { user_id, phrase_id } = phraseInfoResult[0];
+        if (phraseToDelete) {
+            await publicPhrasesCollection.deleteOne({ _id: new ObjectId(publicPhraseId) });
 
-            // Step 1: Delete from the public table
-            await sql`DELETE FROM public_phrases WHERE id = ${publicPhraseId}`;
-
-            // Step 2: Update the original user's data blob to set isPublic to false
-            const userDataResult = await sql`SELECT data FROM users WHERE id = ${user_id}`;
-            if (userDataResult.length > 0) {
-                const userData = userDataResult[0].data;
-                const phraseIndex = userData.phrases.findIndex(p => p.id === phrase_id);
-                if (phraseIndex > -1) {
-                    userData.phrases[phraseIndex].isPublic = false;
-                    await sql`UPDATE users SET data = ${JSON.stringify(userData)} WHERE id = ${user_id}`;
-                }
-            }
-        });
+            await usersCollection.updateOne(
+                { _id: phraseToDelete.userId, 'phrases.id': phraseToDelete.phraseId },
+                { $set: { 'phrases.$.isPublic': false } }
+            );
+        }
 
         return {
             statusCode: 200,

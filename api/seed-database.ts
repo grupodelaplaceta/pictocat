@@ -1,6 +1,6 @@
-// netlify/functions/seed-database.ts
-import { Handler } from '@netlify/functions';
-import getDb from './db';
+// api/seed-database.ts
+import { VercelRequest, VercelResponse } from '@vercel/node';
+import { getDb } from './_utils/mongodb';
 import { MASTER_IMAGE_CATALOG_DATA } from './_shared/catalog-data';
 
 interface CatImageSeed {
@@ -9,7 +9,7 @@ interface CatImageSeed {
   theme: string;
 }
 
-export const handler: Handler = async () => {
+export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
     const db = await getDb();
     const catsCollection = db.collection('cats');
@@ -29,35 +29,25 @@ export const handler: Handler = async () => {
 
     if (catsToInsert.length === 0) {
       const count = await catsCollection.countDocuments();
-      return {
-        statusCode: 200,
-        body: JSON.stringify({
+      return res.status(200).json({
           success: true,
           message: 'Database is already up to date.',
           totalCatsInDB: count
-        })
-      };
+      });
     }
     
     await catsCollection.insertMany(catsToInsert);
 
     const count = await catsCollection.countDocuments();
 
-    return {
-      statusCode: 200,
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ 
+    return res.status(200).json({ 
           success: true, 
           message: `Successfully inserted ${catsToInsert.length} new cats.`,
           totalCatsInDB: count 
-      }),
-    };
+      });
   } catch (error) {
     console.error('Database seeding error:', error);
     const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
-    return {
-      statusCode: 500,
-      body: JSON.stringify({ success: false, message: `Internal Server Error: ${errorMessage}` })
-    };
+    return res.status(500).json({ success: false, message: `Internal Server Error: ${errorMessage}` });
   }
-};
+}

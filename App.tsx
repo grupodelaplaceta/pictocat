@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import netlifyIdentity from 'netlify-identity-widget';
+import { useAuth0 } from '@auth0/auth0-react';
 
 // Components
 import Header from './hooks/Header';
@@ -19,6 +19,8 @@ import FelineRhythmGame from './components/FelineRhythmGame';
 import Auth from './components/Auth';
 import Toast from './components/Toast';
 import AdminPanel from './components/AdminPanel';
+import UserSearch from './components/UserSearch';
+import PublicProfile from './components/PublicProfile';
 import { PlusIcon, CatSilhouetteIcon, SpinnerIcon } from './hooks/Icons';
 
 // Services
@@ -29,24 +31,25 @@ import { useDebounce } from './hooks/useDebounce';
 // Types
 import { 
   Phrase, CatImage, EnvelopeTypeId, UserProfile, UserData, GameMode, 
-  CatMemoryMode, CatTriviaMode, FelineRhythmMode 
+  CatMemoryMode, CatTriviaMode, FelineRhythmMode, PublicProfileData
 } from './types';
 import { ENVELOPES, UPGRADES } from './shopData';
 
 // Main App Component
 const App: React.FC = () => {
-    // State
-    const [isLoading, setIsLoading] = useState(true);
-    const [user, setUser] = useState<netlifyIdentity.User | null>(null);
+    // Auth State from Auth0
+    const { isAuthenticated, isLoading: isAuthLoading, getAccessTokenSilently, logout } = useAuth0();
+
+    // App State
+    const [isAppLoading, setIsAppLoading] = useState(true);
     const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
     const pollingIntervalRef = useRef<number | null>(null);
-    // FIX: Initialize catCatalog state to resolve "cannot find name" errors.
     const [catCatalog, setCatCatalog] = useState<CatImage[]>([]);
 
     // UI State
     type ModalType = 'shop' | 'envelope' | 'imageSelector' | 'album' | 'customPhrase' | 'games' | null;
     const [activeModal, setActiveModal] = useState<ModalType>(null);
-    type ViewType = 'main' | 'game' | 'admin';
+    type ViewType = 'main' | 'game' | 'admin' | 'community';
     const [activeView, setActiveView] = useState<ViewType>('main');
     
     const [displayedPhrase, setDisplayedPhrase] = useState<{ phrase: Phrase; image: CatImage | null } | null>(null);
@@ -56,6 +59,12 @@ const App: React.FC = () => {
     const [openedEnvelopeName, setOpenedEnvelopeName] = useState('');
     const [toastMessage, setToastMessage] = useState('');
     const [activeGameMode, setActiveGameMode] = useState<GameMode | null>(null);
+
+    // Community State
+    const [viewingUsername, setViewingUsername] = useState<string | null>(null);
+    const [publicProfileData, setPublicProfileData] = useState<PublicProfileData | null>(null);
+    const [profileError, setProfileError] = useState('');
+    const [isProfileLoading, setIsProfileLoading] = useState(false);
 
     // Derived State
     const unlockedImages = useMemo(() => {
@@ -72,79 +81,51 @@ const App: React.FC = () => {
     const purchasedUpgrades = useMemo(() => new Set(userProfile?.data.purchasedUpgrades || []), [userProfile]);
 
     const fetchInitialData = useCallback(async () => {
-        setIsLoading(true);
+        if (!isAuthenticated) {
+            setIsAppLoading(false);
+            return;
+        }
+        setIsAppLoading(true);
         try {
+            const token = await getAccessTokenSilently();
             // Fetch catalog first, as it's independent
             const catalog = await api.getCatCatalog();
             setCatCatalog(catalog);
 
-            // Now, fetch user profile if a user is logged in
-            if (api.identity.currentUser()) {
-                const profile = await api.getUserProfile();
-                if (profile) {
-                    setUserProfile(profile);
-                } else {
-                    console.warn("User is logged in, but profile not found on initial load.");
-                }
+            // Now, fetch user profile
+            const profile = await api.getUserProfile(token);
+            if (profile) {
+                setUserProfile(profile);
+            } else {
+                console.warn("User is logged in, but profile not found on initial load.");
             }
         } catch (error) {
             console.error("Failed to fetch initial data.", error);
             setToastMessage('Error al cargar datos iniciales.');
-            // Do not log out, allow polling to handle it
         } finally {
-            setIsLoading(false);
+            setIsAppLoading(false);
         }
-    }, []);
+    }, [isAuthenticated, getAccessTokenSilently]);
 
-
-    // Effects
     useEffect(() => {
-        api.identity.init();
         soundService.init();
-
-        const handleLogin = (loggedInUser: netlifyIdentity.User) => {
-            setUser(loggedInUser);
-            api.identity.close();
-            fetchInitialData();
-        };
-
-        const handleLogout = () => {
-            setUser(null);
-            setUserProfile(null);
-            setIsLoading(false);
-        };
-
-        api.identity.on('login', handleLogin);
-        api.identity.on('logout', handleLogout);
-        
-        const currentUser = api.identity.currentUser();
-        if (currentUser) {
-            setUser(currentUser);
-        }
         fetchInitialData();
-
-
-        return () => {
-            api.identity.off('login', handleLogin);
-            api.identity.off('logout', handleLogout);
-        };
     }, [fetchInitialData]);
     
     // Polling effect for new user profile creation
     useEffect(() => {
-        // Condition to START polling
-        if (user && !userProfile && !isLoading) {
-            // To be safe, clear any previous interval before starting a new one.
+        if (isAuthenticated && !userProfile && !isAuthLoading && !isAppLoading) {
             if (pollingIntervalRef.current) clearInterval(pollingIntervalRef.current);
             
             console.log("User logged in, but profile is missing. Starting to poll.");
             pollingIntervalRef.current = window.setInterval(async () => {
                 console.log("Polling for user profile...");
                 try {
-                    const profile = await api.getUserProfile();
+                    const token = await getAccessTokenSilently();
+                    const profile = await api.getUserProfile(token);
                     if (profile) {
                         console.log("Profile found!");
-                        setUserProfile(profile); // This will cause effect to re-run and stop polling via cleanup.
+                        setUserProfile(profile);
                     }
                 } catch (error) {
                     console.error("Polling error:", error);
@@ -152,8 +133,6 @@ const App: React.FC = () => {
             }, 3000);
         }
 
-        // Cleanup function will be called when dependencies change or on unmount.
-        // This handles stopping the poll when userProfile is found, or user logs out.
         return () => {
             if (pollingIntervalRef.current) {
                 console.log("Stopping polling.");
@@ -161,27 +140,30 @@ const App: React.FC = () => {
                 pollingIntervalRef.current = null;
             }
         };
-    }, [user, userProfile, isLoading]);
+    }, [isAuthenticated, userProfile, isAuthLoading, isAppLoading, getAccessTokenSilently]);
 
+    const saveProfileData = useCallback(async (data: UserData) => {
+        try {
+            const token = await getAccessTokenSilently();
+            await api.saveUserData(token, data);
+        } catch (error) {
+            console.error("Failed to save user data", error);
+            setToastMessage("Error al guardar tu progreso.");
+        }
+    }, [getAccessTokenSilently]);
 
     useDebounce(() => {
         if (userProfile?.data) {
-            api.saveUserData(userProfile.data);
+            saveProfileData(userProfile.data);
         }
-    }, 1500, [userProfile?.data]);
+    }, 1500, [userProfile?.data, saveProfileData]);
     
     const updateUserData = (updater: (draft: UserData) => UserData | void) => {
         setUserProfile(currentProfile => {
             if (!currentProfile || !currentProfile.data) return currentProfile;
-            
-            // Create a deep copy to ensure we don't mutate state directly
             const draft = JSON.parse(JSON.stringify(currentProfile.data));
             const result = updater(draft);
-            
-            return {
-                ...currentProfile,
-                data: result || draft,
-            };
+            return { ...currentProfile, data: result || draft };
         });
     };
 
@@ -210,9 +192,7 @@ const App: React.FC = () => {
         soundService.play('select');
         updateUserData(draft => {
             const phrase = draft.phrases.find(p => p.id === phraseId);
-            if (phrase) {
-                phrase.selectedImageId = imageId;
-            }
+            if (phrase) phrase.selectedImageId = imageId;
         });
         setActiveModal(null);
     };
@@ -226,15 +206,12 @@ const App: React.FC = () => {
             setToastMessage('¡No tienes suficientes monedas!');
             return;
         }
-
         const currentUnlockedIds = new Set(userProfile.data.unlockedImageIds);
         const lockedImages = catCatalog.filter(img => !currentUnlockedIds.has(img.id));
-        
         if(lockedImages.length === 0) {
             setToastMessage("¡Ya has desbloqueado todos los gatos!");
             return;
         }
-
         const newImages: CatImage[] = [];
         for (let i = 0; i < envelope.imageCount; i++) {
             if (lockedImages.length > newImages.length) {
@@ -245,14 +222,12 @@ const App: React.FC = () => {
                 }
             }
         }
-
         if (newImages.length > 0) {
             soundService.play('purchase');
             updateUserData(draft => {
                 draft.coins -= cost;
                 draft.unlockedImageIds.push(...newImages.map(img => img.id));
                 draft.playerStats.xp += envelope.xp;
-                // Level up logic
                 if (draft.playerStats.xp >= draft.playerStats.xpToNextLevel) {
                     draft.playerStats.level += 1;
                     draft.playerStats.xp -= draft.playerStats.xpToNextLevel;
@@ -268,11 +243,9 @@ const App: React.FC = () => {
     const handlePurchaseUpgrade = (upgradeId: string) => {
         const upgrade = UPGRADES[upgradeId];
         if (!upgrade || !userProfile?.data) return;
-
         if (userProfile.data.coins >= upgrade.cost && 
             userProfile.data.playerStats.level >= upgrade.levelRequired &&
-            !purchasedUpgrades.has(upgrade.id as any)
-        ) {
+            !purchasedUpgrades.has(upgrade.id as any)) {
             soundService.play('purchase');
             updateUserData(draft => {
                 draft.coins -= upgrade.cost;
@@ -291,7 +264,6 @@ const App: React.FC = () => {
             isCustom: true,
             isPublic: data.isPublic
         };
-
         updateUserData(draft => {
             if (phraseToEdit) {
                 const index = draft.phrases.findIndex(p => p.id === phraseToEdit.id);
@@ -300,13 +272,11 @@ const App: React.FC = () => {
                 draft.phrases.push(phrase);
             }
         });
-
-        // Publish/unpublish phrase
         const image = catCatalog.find(img => img.id === data.selectedImageId);
         if (image) {
-            await api.publishPhrase(phrase, image, data.isPublic);
+            const token = await getAccessTokenSilently();
+            await api.publishPhrase(token, phrase, image, data.isPublic);
         }
-
         setActiveModal(null);
         setPhraseToEdit(null);
     };
@@ -314,19 +284,16 @@ const App: React.FC = () => {
     const handleDeleteCustomPhrase = async (phraseId: string) => {
          soundService.play('favoriteOff');
          const phraseToDelete = userProfile?.data.phrases.find(p => p.id === phraseId);
-
          updateUserData(draft => {
             draft.phrases = draft.phrases.filter(p => p.id !== phraseId);
          });
-
-         // If it was public, un-publish it
          if (phraseToDelete?.isPublic) {
             const image = catCatalog.find(img => img.id === phraseToDelete.selectedImageId);
             if (image) {
-                 await api.publishPhrase(phraseToDelete, image, false);
+                 const token = await getAccessTokenSilently();
+                 await api.publishPhrase(token, phraseToDelete, image, false);
             }
          }
-
          setActiveModal(null);
          setPhraseToEdit(null);
     };
@@ -343,7 +310,6 @@ const App: React.FC = () => {
             finalCoins = Math.ceil(finalCoins * 1.5);
         }
         setToastMessage(`¡Juego terminado! Ganaste ${finalCoins} monedas y ${results.xpEarned} XP.`);
-        
         updateUserData(draft => {
             draft.coins += finalCoins;
             draft.playerStats.xp += results.xpEarned;
@@ -353,22 +319,43 @@ const App: React.FC = () => {
                 draft.playerStats.xpToNextLevel = Math.floor(draft.playerStats.xpToNextLevel * 1.5);
             }
         });
-        
         setActiveGameMode(null);
         setActiveView('main');
     };
+
+    const handleSelectUser = async (username: string) => {
+        setIsProfileLoading(true);
+        setViewingUsername(username);
+        setProfileError('');
+        setPublicProfileData(null);
+        try {
+            const token = await getAccessTokenSilently();
+            const data = await api.getPublicProfile(token, username);
+            setPublicProfileData(data);
+        } catch (error) {
+            console.error("Failed to load profile", error);
+            setProfileError('No se pudo cargar el perfil de este usuario.');
+        } finally {
+            setIsProfileLoading(false);
+        }
+    };
+
+    const handleBackToSearch = () => {
+        setViewingUsername(null);
+        setPublicProfileData(null);
+        setProfileError('');
+    };
     
     // Render Logic
-    if (isLoading && !user) {
+    if (isAuthLoading || isAppLoading) {
         return <div className="fixed inset-0 flex items-center justify-center text-2xl font-bold text-liver">Cargando...</div>;
     }
     
-    if (!user) {
+    if (!isAuthenticated) {
         return <Auth />;
     }
 
     if (!userProfile) {
-        // This state appears while the profile is being created automatically via webhook.
         return (
             <div className="fixed inset-0 flex flex-col items-center justify-center p-4 bg-wheat">
                  <div className="text-center">
@@ -408,6 +395,12 @@ const App: React.FC = () => {
                 );
             case 'admin':
                 return <AdminPanel />;
+            case 'community':
+                if (viewingUsername) {
+                    return <PublicProfile profileData={publicProfileData} error={profileError} onBack={handleBackToSearch} />;
+                } else {
+                    return <UserSearch onSelectUser={handleSelectUser} />;
+                }
             case 'main':
             default:
                 return (
@@ -445,9 +438,12 @@ const App: React.FC = () => {
                 onOpenShop={() => setActiveModal('shop')}
                 onOpenGames={() => setActiveModal('games')}
                 onOpenAdmin={() => { setActiveView('admin'); setActiveModal(null); }}
+                onOpenCommunity={() => { setActiveView('community'); handleBackToSearch(); setActiveModal(null); }}
+                onGoToMain={() => setActiveView('main')}
                 currentUser={userProfile.email}
-                onLogout={() => api.identity.logout()}
+                onLogout={() => logout({ logoutParams: { returnTo: window.location.origin } })}
                 isAdmin={userProfile.role === 'admin'}
+                activeView={activeView}
             />
 
             {renderView()}

@@ -1,6 +1,6 @@
 // netlify/functions/saveUserData.ts
 import { Handler, HandlerContext } from '@netlify/functions';
-import sql from './db';
+import getDb from './db';
 
 export const handler: Handler = async (event, context: HandlerContext) => {
   if (event.httpMethod !== 'POST') {
@@ -19,7 +19,10 @@ export const handler: Handler = async (event, context: HandlerContext) => {
       return { statusCode: 400, body: 'User data is required' };
     }
 
-    await sql`UPDATE users SET data = ${JSON.stringify(data)} WHERE id = ${user.sub}`;
+    const db = await getDb();
+    const usersCollection = db.collection('users');
+
+    await usersCollection.updateOne({ _id: user.sub }, { $set: data });
 
     return {
       statusCode: 200,
