@@ -1,6 +1,6 @@
 import React from 'react';
 import { CatImage, Phrase } from '../types';
-import { CloseIcon } from './Icons';
+import { CloseIcon } from '../hooks/Icons';
 
 interface ImageSelectorProps {
   isOpen: boolean;
@@ -20,11 +20,11 @@ const ImageSelector: React.FC<ImageSelectorProps> = ({ isOpen, onClose, onSelect
 
 
   return (
-    <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4 animate-fadeIn">
-      <div className="bg-white rounded-lg shadow-2xl p-4 sm:p-6 w-full max-w-3xl max-h-[90vh] flex flex-col">
-        <header className="flex justify-between items-center mb-4">
-          <h2 className="text-lg sm:text-2xl font-bold text-gray-800">Elige una imagen para "{phrase.text}"</h2>
-          <button onClick={onClose} className="text-gray-500 hover:text-gray-800">
+    <div className="modal-cartoon-overlay">
+      <div className="modal-cartoon-content p-4 sm:p-6 w-full max-w-3xl">
+        <header className="flex justify-between items-center mb-4 pb-4 border-b-2 border-liver/20">
+          <h2 className="text-lg sm:text-2xl font-bold text-liver">Elige una imagen para "{phrase.text}"</h2>
+          <button onClick={onClose} className="text-liver/70 hover:text-liver">
             <CloseIcon className="w-7 h-7" />
           </button>
         </header>
@@ -34,23 +34,23 @@ const ImageSelector: React.FC<ImageSelectorProps> = ({ isOpen, onClose, onSelect
               {/* Option to have no image */}
               <button
                   onClick={() => onSelectImage(phrase.id, null)}
-                  className={`aspect-square rounded-lg flex items-center justify-center border-2 transition-colors ${!phrase.selectedImageId ? 'border-blue-600 ring-2 ring-blue-600' : 'border-gray-200 hover:border-gray-400'}`}
+                  className={`aspect-square rounded-lg flex items-center justify-center border-4 transition-colors ${!phrase.selectedImageId ? 'border-buff ring-4 ring-buff/50' : 'border-liver/20 hover:border-liver/40'}`}
               >
-                  <span className="text-gray-500 text-lg">Ninguna</span>
+                  <span className="text-liver/70 text-lg font-bold">Ninguna</span>
               </button>
               {relevantImages.map(image => (
                 <button
                   key={image.id}
                   onClick={() => onSelectImage(phrase.id, image.id)}
-                  className={`aspect-square rounded-lg overflow-hidden border-4 transition-colors ${phrase.selectedImageId === image.id ? 'border-blue-600 ring-2 ring-blue-600' : 'border-transparent hover:border-orange-500'}`}
+                  className={`aspect-square rounded-lg overflow-hidden border-4 transition-all duration-200 ${phrase.selectedImageId === image.id ? 'border-buff ring-4 ring-buff/50 scale-105' : 'border-transparent hover:border-buff'}`}
                 >
                   <img src={image.url} alt={image.theme} className="w-full h-full object-cover" />
                 </button>
               ))}
             </div>
           ) : (
-            <div className="text-center text-gray-600 py-10">
-              <p>No tienes imágenes desbloqueadas para esta frase.</p>
+            <div className="text-center text-liver/80 py-10">
+              <p className="font-bold">No tienes imágenes desbloqueadas.</p>
               <p>¡Compra sobres en la tienda para conseguir más!</p>
             </div>
           )}

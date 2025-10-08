@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { MouseHuntMode } from '../types';
-import { MouseIcon } from './Icons';
+import { MouseIcon } from '../hooks/Icons';
 import { soundService } from '../services/audioService';
 
 interface MouseHuntGameProps {
@@ -88,15 +88,15 @@ const MouseHuntGame: React.FC<MouseHuntGameProps> = ({ mode, upgrades, onGameEnd
   const gridTemplateColumns = `repeat(${Math.ceil(Math.sqrt(mode.gridSize))}, minmax(0, 1fr))`;
 
   return (
-    <div className="w-full max-w-lg mx-auto p-4 bg-lime-200 rounded-lg shadow-lg border-4 border-lime-700">
-      <div className="flex justify-between items-center mb-4 text-lime-900 font-bold">
+    <div className="w-full max-w-lg mx-auto p-4 bg-wheat rounded-lg shadow-lg border-4 border-liver">
+      <div className="flex justify-between items-center mb-4 text-liver font-bold">
         <div className="text-2xl">Puntuación: {score}</div>
         <div className="text-2xl">Tiempo: {timeLeft}s</div>
       </div>
       <div className="grid gap-2" style={{ gridTemplateColumns }}>
         {Array.from({ length: mode.gridSize }).map((_, i) => (
-          <div key={i} className="w-full aspect-square bg-lime-600 rounded-full flex items-center justify-center p-2 cursor-pointer" onClick={() => onWhack(i)}>
-            <div className="w-full h-full bg-amber-800 rounded-full shadow-inner">
+          <div key={i} className="w-full aspect-square bg-buff rounded-full flex items-center justify-center p-2 cursor-pointer" onClick={() => onWhack(i)}>
+            <div className="w-full h-full bg-liver rounded-full shadow-inner">
               {mice.includes(i) && (
                 <div className="w-full h-full flex items-center justify-center animate-popIn">
                   <MouseIcon className="w-3/4 h-3/4 text-gray-300"/>

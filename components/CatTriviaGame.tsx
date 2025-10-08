@@ -105,29 +105,29 @@ const CatTriviaGame: React.FC<CatTriviaGameProps> = ({ mode, images, onGameEnd }
     };
 
     if (questions.length === 0) {
-        return <div className="text-center p-8 font-bold text-slate-700">Cargando preguntas...</div>;
+        return <div className="text-center p-8 font-bold text-liver">Cargando preguntas...</div>;
     }
 
     const currentQuestion = questions[currentQuestionIndex];
     const timePercentage = (timeLeft / mode.timePerQuestion) * 100;
 
     return (
-        <div className="w-full max-w-xl mx-auto p-4 bg-amber-100 rounded-lg shadow-lg border-4 border-amber-500 text-amber-900">
+        <div className="w-full max-w-xl mx-auto p-4 bg-wheat rounded-lg shadow-lg border-4 border-liver text-liver">
             <header className="flex justify-between items-center mb-4 font-bold">
                 <div className="text-lg">Pregunta: {currentQuestionIndex + 1} / {questions.length}</div>
                 <div className="text-lg">Puntuación: {score}</div>
             </header>
             
-            <div className="w-full h-3 bg-amber-300 rounded-full mb-4 overflow-hidden">
+            <div className="w-full h-3 bg-buff/50 rounded-full mb-4 overflow-hidden">
                 <div 
-                    className="h-full bg-gradient-to-r from-orange-400 to-red-500 transition-all duration-1000 linear" 
+                    className="h-full bg-buff transition-all duration-1000 linear" 
                     style={{width: `${timePercentage}%`}}
                 />
             </div>
 
-            <div className="bg-white p-4 rounded-lg shadow-md mb-4">
+            <div className="bg-seasalt p-4 rounded-lg shadow-md mb-4">
                 <p className="text-center font-semibold text-xl mb-4">¿A qué tema pertenece este gato?</p>
-                <div className="w-full h-64 rounded-lg overflow-hidden flex items-center justify-center bg-slate-100">
+                <div className="w-full h-64 rounded-lg overflow-hidden flex items-center justify-center bg-wheat">
                     <img src={currentQuestion.image.url} alt="Gato misterioso" className="max-w-full max-h-full object-contain" />
                 </div>
             </div>
@@ -136,7 +136,7 @@ const CatTriviaGame: React.FC<CatTriviaGameProps> = ({ mode, images, onGameEnd }
                 {currentQuestion.options.map(option => {
                     const isCorrect = option === currentQuestion.correctAnswer;
                     const isSelected = option === selectedAnswer;
-                    let buttonClass = 'bg-white hover:bg-amber-200 border-amber-300';
+                    let buttonClass = 'bg-seasalt hover:bg-wheat border-buff';
                     if (isAnswered) {
                         if (isCorrect) {
                             buttonClass = 'bg-green-500 text-white border-green-600 scale-105';

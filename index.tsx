@@ -1,5 +1,6 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
+// FIX: Correct the import path to resolve the module not found error.
 import App from './App';
 
 /**

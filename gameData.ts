@@ -9,9 +9,9 @@ export const GAMES_DATA: Record<string, {name: string, description: string}> = {
     name: 'Memoria Felina',
     description: 'Pon a prueba tu memoria con tus gatos desbloqueados.'
   },
-  felineRhythm: {
-    name: 'Ritmo Felino',
-    description: '¡Sigue el ritmo de los maullidos!'
+  simonSays: {
+    name: 'Miau Simón',
+    description: 'Repite la secuencia de maullidos. ¡No te equivoques!'
   },
   catTrivia: {
     name: 'Triviatos',
@@ -85,15 +85,36 @@ export const GAME_MODES: GameMode[] = [
     minImagesRequired: 8,
     description: "Encuentra 8 pares. ¡Para memorias expertas!"
   },
-  // --- Feline Rhythm Modes ---
+  // --- Miau Simón Modes ---
   {
-    gameId: 'felineRhythm',
-    id: 'felineRhythm-normal',
+    gameId: 'simonSays',
+    id: 'simonSays-easy',
+    name: 'Fácil',
+    gameDuration: 120, // max time for the whole game
+    initialSequenceLength: 3,
+    speedMs: 800,
+    rewardPerRound: 5,
+    description: "Ritmo tranquilo para empezar."
+  },
+  {
+    gameId: 'simonSays',
+    id: 'simonSays-medium',
     name: 'Normal',
-    gameDuration: 60,
-    rewardMultiplier: 2,
-    noteCount: 50,
-    description: "¡Sigue el ritmo para ganar premios!"
+    gameDuration: 120,
+    initialSequenceLength: 3,
+    speedMs: 500,
+    rewardPerRound: 8,
+    description: "Un reto para tus reflejos felinos."
+  },
+  {
+    gameId: 'simonSays',
+    id: 'simonSays-hard',
+    name: 'Difícil',
+    gameDuration: 120,
+    initialSequenceLength: 4,
+    speedMs: 350,
+    rewardPerRound: 12,
+    description: "¡Velocidad endiablada! Solo para expertos."
   },
   // --- Cat Trivia Modes ---
   {

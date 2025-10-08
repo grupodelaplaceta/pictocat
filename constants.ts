@@ -4,6 +4,8 @@ export const INITIAL_COINS = 500;
 export const ENVELOPE_COST = 100;
 export const IMAGES_PER_ENVELOPE = 3;
 
+export const LOGO_URL = "https://i.imghippo.com/files/cGjt3084yro.png";
+
 export const INITIAL_PHRASES: Phrase[] = [
   { id: 'yes', text: 'Sí', selectedImageId: null, isCustom: false },
   { id: 'no', text: 'No', selectedImageId: null, isCustom: false },

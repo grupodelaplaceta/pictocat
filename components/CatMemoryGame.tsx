@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { CatMemoryMode, CatImage } from '../types';
 import { soundService } from '../services/audioService';
-import { CatSilhouetteIcon } from './Icons';
+import { CatSilhouetteIcon } from '../hooks/Icons';
 
 interface CatMemoryGameProps {
   mode: CatMemoryMode;
@@ -106,8 +106,8 @@ const CatMemoryGame: React.FC<CatMemoryGameProps> = ({ mode, images, onGameEnd }
   const gridTemplateColumns = `repeat(${gridCols}, minmax(0, 1fr))`;
 
   return (
-    <div className="w-full max-w-2xl mx-auto p-4 bg-sky-100 rounded-lg shadow-lg border-4 border-sky-500">
-        <div className="flex justify-between items-center mb-4 text-sky-900 font-bold">
+    <div className="w-full max-w-2xl mx-auto p-4 bg-wheat rounded-lg shadow-lg border-4 border-liver">
+        <div className="flex justify-between items-center mb-4 text-liver font-bold">
             <div className="text-xl">Pares: {pairsFound} / {mode.pairCount}</div>
             <div className="text-xl">Tiempo: {timeLeft}s</div>
         </div>
@@ -116,11 +116,11 @@ const CatMemoryGame: React.FC<CatMemoryGameProps> = ({ mode, images, onGameEnd }
                 <div key={card.id} className="aspect-square perspective cursor-pointer" onClick={() => handleCardClick(index)}>
                     <div className={`relative w-full h-full transition-transform duration-500 transform-style-3d ${card.isFlipped || card.isMatched ? 'rotate-y-180' : ''}`}>
                         {/* Card Back */}
-                        <div className="absolute w-full h-full backface-hidden bg-sky-500 rounded-lg flex items-center justify-center shadow-md">
-                            <CatSilhouetteIcon className="w-3/4 h-3/4 text-white/70" />
+                        <div className="absolute w-full h-full backface-hidden bg-uranian_blue rounded-lg flex items-center justify-center shadow-md">
+                            <CatSilhouetteIcon className="w-3/4 h-3/4 text-seasalt/70" />
                         </div>
                         {/* Card Front */}
-                        <div className={`absolute w-full h-full backface-hidden rotate-y-180 bg-white rounded-lg overflow-hidden shadow-md border-4 ${card.isMatched ? 'border-green-500' : 'border-transparent'}`}>
+                        <div className={`absolute w-full h-full backface-hidden rotate-y-180 bg-seasalt rounded-lg overflow-hidden shadow-md border-4 ${card.isMatched ? 'border-green-500' : 'border-transparent'}`}>
                            <img src={card.url} alt="Gato" className="w-full h-full object-cover" />
                            {card.isMatched && <div className="absolute inset-0 bg-green-500/30"></div>}
                         </div>

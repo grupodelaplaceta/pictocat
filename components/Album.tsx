@@ -1,15 +1,19 @@
 import React, { useState, useMemo } from 'react';
 import { CatImage } from '../types';
-import { CloseIcon, SearchIcon } from './Icons';
+import { CloseIcon, SearchIcon } from '../hooks/Icons';
 
 interface AlbumProps {
+  isOpen: boolean;
   unlockedImages: CatImage[];
   onClose: () => void;
 }
 
-const Album: React.FC<AlbumProps> = ({ unlockedImages, onClose }) => {
+const Album: React.FC<AlbumProps> = ({ isOpen, unlockedImages, onClose }) => {
   const [searchTerm, setSearchTerm] = useState('');
   
+  // FIX: Conditionally render the component based on the isOpen prop.
+  if (!isOpen) return null;
+
   const themes = useMemo(() => {
     const themeSet = new Set(unlockedImages.map(img => img.theme));
     return ['Todos', ...Array.from(themeSet).sort()];
@@ -26,11 +30,11 @@ const Album: React.FC<AlbumProps> = ({ unlockedImages, onClose }) => {
   }, [unlockedImages, selectedTheme, searchTerm]);
 
   return (
-    <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4 animate-fadeIn">
-      <div className="bg-slate-100 rounded-lg shadow-2xl p-4 w-full h-full max-w-4xl max-h-[90vh] flex flex-col">
-        <header className="flex justify-between items-center mb-4 pb-2 border-b">
-          <h2 className="text-xl sm:text-2xl font-bold text-gray-800">Álbum de Gatos</h2>
-          <button onClick={onClose} className="text-gray-500 hover:text-gray-800">
+    <div className="modal-cartoon-overlay">
+      <div className="modal-cartoon-content p-4 sm:p-6 w-full max-w-4xl">
+        <header className="flex justify-between items-center mb-4 pb-4 border-b-2 border-liver/20">
+          <h2 className="text-xl sm:text-2xl font-black text-liver">Álbum de Gatos</h2>
+          <button onClick={onClose} className="text-liver/70 hover:text-liver">
             <CloseIcon className="w-7 h-7" />
           </button>
         </header>
@@ -42,14 +46,14 @@ const Album: React.FC<AlbumProps> = ({ unlockedImages, onClose }) => {
                     placeholder="Buscar por tema..."
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
-                    className="w-full pl-10 pr-4 py-2 border rounded-full"
+                    className="input-cartoon pl-10"
                  />
-                 <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                 <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-liver/40" />
             </div>
             <select
                 value={selectedTheme}
                 onChange={(e) => setSelectedTheme(e.target.value)}
-                className="px-4 py-2 border rounded-full bg-white"
+                className="input-cartoon"
             >
                 {themes.map(theme => (
                     <option key={theme} value={theme}>{theme}</option>
@@ -57,18 +61,18 @@ const Album: React.FC<AlbumProps> = ({ unlockedImages, onClose }) => {
             </select>
         </div>
 
-        <main className="flex-grow overflow-y-auto pr-2">
+        <main className="flex-grow overflow-y-auto bg-wheat p-2 rounded-lg border-2 border-liver/20">
             {filteredImages.length > 0 ? (
-                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 p-2">
                     {filteredImages.map(image => (
-                        <div key={image.id} className="aspect-square rounded-lg overflow-hidden shadow-md group">
+                        <div key={image.id} className="aspect-square rounded-lg overflow-hidden border-2 border-liver/30 shadow-md group">
                             <img src={image.url} alt={image.theme} className="w-full h-full object-cover transition-transform group-hover:scale-110" />
                         </div>
                     ))}
                 </div>
             ) : (
-                <div className="flex flex-col items-center justify-center h-full text-gray-500">
-                    <p className="text-lg">No se encontraron gatos.</p>
+                <div className="flex flex-col items-center justify-center h-full text-liver/70">
+                    <p className="text-lg font-bold">No se encontraron gatos.</p>
                     <p className="text-sm">Sigue jugando para desbloquear más.</p>
                 </div>
             )}

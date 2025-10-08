@@ -2,18 +2,142 @@
 @tailwind components;
 @tailwind utilities;
 
-body {
-  font-family: 'Nunito', sans-serif;
-  background-color: #f1f5f9;
-  background-image: linear-gradient(160deg, #f1f5f9 0%, #e2e8f0 100%);
+:root {
+  --brand-wheat: #F8DDB5;
+  --brand-liver: #6A4A3D;
+  --brand-seasalt: #FAF9F7;
+  --brand-buff: #DBAA74;
+  --brand-uranian-blue: #A0D7F5;
+  --brand-buff-dark: #b88e5f;
+
+  --font-cartoon: 'Fredoka', sans-serif;
+  --radius-cartoon: 1rem;
+  --border-cartoon: 3px solid var(--brand-liver);
+  --shadow-cartoon: 4px 4px 0px var(--brand-liver);
+  --shadow-cartoon-hover: 6px 6px 0px var(--brand-liver);
 }
 
-@keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
+body {
+  font-family: var(--font-cartoon);
+  background-color: var(--brand-wheat);
+  color: var(--brand-liver);
+  font-weight: 500;
+  /* Add a subtle grid pattern to the background */
+  background-image:
+      linear-gradient(rgba(106, 74, 61, 0.07) 1px, transparent 1px),
+      linear-gradient(to right, rgba(106, 74, 61, 0.07) 1px, transparent 1px);
+  background-size: 2rem 2rem;
 }
-.animate-fadeIn {
-  animation: fadeIn 0.3s ease-out forwards;
+
+/* --- New Cartoon Components --- */
+
+.btn-cartoon {
+    @apply font-bold rounded-2xl transition-all duration-150 ease-in-out active:translate-y-1 active:shadow-none;
+    color: var(--brand-liver);
+    border: var(--border-cartoon);
+    box-shadow: var(--shadow-cartoon);
+    padding: 0.75rem 1.5rem;
+}
+.btn-cartoon:hover {
+    box-shadow: var(--shadow-cartoon-hover);
+    transform: translateY(-2px);
+}
+.btn-cartoon:disabled {
+    @apply bg-slate-400 text-slate-600 cursor-not-allowed;
+    box-shadow: var(--shadow-cartoon);
+    transform: translateY(0);
+}
+
+.btn-cartoon-primary {
+    background-color: var(--brand-buff);
+}
+.btn-cartoon-primary:hover:not(:disabled) {
+    background-color: var(--brand-buff-dark);
+}
+
+.btn-cartoon-secondary {
+    background-color: var(--brand-uranian-blue);
+}
+.btn-cartoon-secondary:hover:not(:disabled) {
+    background-color: #8ac9ec; /* a bit darker */
+}
+
+.btn-cartoon-danger {
+    background-color: #ef4444; /* red-500 */
+    color: white;
+}
+.btn-cartoon-danger:hover:not(:disabled) {
+    background-color: #dc2626; /* red-600 */
+}
+
+
+.modal-cartoon-overlay {
+    @apply fixed inset-0 flex items-center justify-center z-50 p-4;
+    background-color: rgba(106, 74, 61, 0.7); /* liver/70 */
+    animation: modal-overlay-fade-in 0.2s ease-out forwards;
+}
+
+.modal-cartoon-content {
+    @apply w-full max-h-[90vh] flex flex-col;
+    background-color: var(--brand-seasalt);
+    border-radius: var(--radius-cartoon);
+    border: var(--border-cartoon);
+    box-shadow: 8px 8px 0px var(--brand-liver);
+    animation: bounce-in 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+}
+
+.input-cartoon {
+    @apply w-full px-4 py-3 rounded-xl shadow-inner focus:outline-none focus:ring-4;
+    border: var(--border-cartoon);
+    background-color: #f8fafc; /* slate-50 */
+    color: var(--brand-liver);
+}
+.input-cartoon:focus {
+    border-color: var(--brand-buff);
+    box-shadow: inset 2px 2px 0px rgba(0,0,0,0.1);
+    --tw-ring-color: rgba(219, 170, 116, 0.4); /* buff/40 */
+}
+
+.card-cartoon {
+    @apply rounded-2xl transition-all duration-150 ease-in-out cursor-pointer;
+    border: var(--border-cartoon);
+    box-shadow: var(--shadow-cartoon);
+    background-color: var(--brand-seasalt);
+}
+.card-cartoon:hover {
+    box-shadow: var(--shadow-cartoon-hover);
+    transform: translateY(-4px);
+}
+
+.card-cartoon-add {
+    @apply rounded-2xl transition-all duration-150 ease-in-out cursor-pointer flex flex-col items-center justify-center gap-2;
+    border: 3px dashed rgba(106, 74, 61, 0.4);
+    background-color: rgba(250, 249, 247, 0.5);
+}
+.card-cartoon-add:hover {
+    border-color: var(--brand-buff);
+    background-color: var(--brand-seasalt);
+}
+
+
+/* Animations */
+@keyframes modal-overlay-fade-in {
+  from { background-color: rgba(106, 74, 61, 0); }
+  to { background-color: rgba(106, 74, 61, 0.7); }
+}
+
+@keyframes bounce-in {
+  0% { opacity: 0; transform: scale(0.5); }
+  100% { opacity: 1; transform: scale(1); }
+}
+
+@keyframes toast-slide-in {
+  from { opacity: 0; transform: translate(-50%, 20px); }
+  to { opacity: 1; transform: translate(-50%, 0); }
+}
+
+.toast-animation {
+    animation: toast-slide-in 0.4s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
 }
 
 @keyframes popIn {
@@ -22,14 +146,6 @@ body {
 }
 .animate-popIn {
   animation: popIn 0.4s cubic-bezier(0.18, 0.89, 0.32, 1.28) forwards;
-}
-
-@keyframes pulse-subtle {
-  0%, 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(29, 78, 216, 0.7); }
-  50% { transform: scale(1.05); box-shadow: 0 0 0 10px rgba(29, 78, 216, 0); }
-}
-.animate-pulse-subtle {
-  animation: pulse-subtle 2s infinite;
 }
 
 .perspective {
@@ -46,15 +162,6 @@ body {
   transform: rotateY(180deg);
 }
 
-@keyframes feedback-anim {
-  0% { transform: scale(1); opacity: 1; }
-  100% { transform: scale(1.2); opacity: 0; }
-}
-.feedback-animation {
-  animation: feedback-anim 0.3s ease-out forwards;
-}
-
-
 /* Confetti animation for reward modal */
 @keyframes confetti-fall {
   0% { transform: translateY(-10vh) rotateZ(0deg) rotateY(0deg); opacity: 1; }
@@ -63,10 +170,27 @@ body {
 
 .confetti-piece {
   position: absolute;
-  width: 8px;
-  height: 16px;
+  width: 10px;
+  height: 20px;
   opacity: 0;
   animation-name: confetti-fall;
   animation-timing-function: linear;
   animation-iteration-count: infinite;
+}
+
+/* Specific component styles override */
+/* Header action buttons */
+.action-button {
+    @apply flex items-center gap-2 font-bold px-3 rounded-xl transition-all h-10;
+    color: var(--brand-liver);
+    border: 2px solid var(--brand-liver);
+    box-shadow: 2px 2px 0px var(--brand-liver);
+}
+.action-button:hover {
+    box-shadow: 3px 3px 0px var(--brand-liver);
+    @apply transform -translate-y-px;
+}
+.action-button:active {
+    box-shadow: none;
+    @apply transform translate-y-px;
 }

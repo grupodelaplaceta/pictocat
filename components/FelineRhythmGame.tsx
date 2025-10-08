@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { FelineRhythmMode } from '../types';
 import { soundService } from '../services/audioService';
-import { MusicNoteIcon } from './Icons';
+import { MusicNoteIcon } from '../hooks/Icons';
 
 interface FelineRhythmGameProps {
   mode: FelineRhythmMode;
@@ -160,13 +160,13 @@ const FelineRhythmGame: React.FC<FelineRhythmGameProps> = ({ mode, onGameEnd }) 
     const displayNotes = notes.filter(n => !n.isHit);
 
     return (
-        <div className="w-full max-w-md mx-auto p-4 bg-indigo-900 rounded-lg shadow-lg border-4 border-purple-500 text-white select-none">
+        <div className="w-full max-w-md mx-auto p-4 bg-liver rounded-lg shadow-lg border-4 border-black text-seasalt select-none">
             <div className="flex justify-between items-center mb-4 font-bold">
                 <div className="text-2xl">Score: {score}</div>
                 <div className="text-2xl">Time: {timeLeft}s</div>
             </div>
             
-            <div ref={gameAreaRef} className="relative w-full h-[600px] bg-black/50 overflow-hidden border-2 border-indigo-700 rounded-md">
+            <div ref={gameAreaRef} className="relative w-full h-[600px] bg-black/50 overflow-hidden border-2 border-liver rounded-md">
                 {displayNotes.map(note => (
                     <div
                         key={note.id}
@@ -174,14 +174,14 @@ const FelineRhythmGame: React.FC<FelineRhythmGameProps> = ({ mode, onGameEnd }) 
                         className="note absolute"
                         style={{ left: `${(note.lane / LANES) * 100 + (100 / LANES / 2)}%`, transform: 'translateX(-50%)' }}
                     >
-                       <MusicNoteIcon className="w-10 h-10 text-cyan-300 drop-shadow-[0_0_5px_#22d3ee]" />
+                       <MusicNoteIcon className="w-10 h-10 text-uranian_blue drop-shadow-[0_0_5px_#A0D7F5]" />
                     </div>
                 ))}
-                <div className="absolute bottom-0 left-0 right-0 h-[10px] bg-gradient-to-t from-cyan-400/50 to-transparent" style={{bottom: `${TARGET_LINE_FROM_BOTTOM - 5}px`}}/>
+                <div className="absolute bottom-0 left-0 right-0 h-[10px] bg-gradient-to-t from-uranian_blue/50 to-transparent" style={{bottom: `${TARGET_LINE_FROM_BOTTOM - 5}px`}}/>
                  <div className="absolute left-0 right-0 grid grid-cols-4 h-full">
-                    <div className="border-r border-indigo-500/20"></div>
-                    <div className="border-r border-indigo-500/20"></div>
-                    <div className="border-r border-indigo-500/20"></div>
+                    <div className="border-r border-buff/20"></div>
+                    <div className="border-r border-buff/20"></div>
+                    <div className="border-r border-buff/20"></div>
                 </div>
             </div>
 
@@ -191,7 +191,7 @@ const FelineRhythmGame: React.FC<FelineRhythmGameProps> = ({ mode, onGameEnd }) 
                         key={i} 
                         onMouseDown={() => handleKeyPress(i)}
                         className={`py-4 rounded-lg font-bold text-xl transition-colors duration-100 border-b-4 ${
-                            hits[i] === 'hit' ? 'bg-green-500 border-green-700' : hits[i] === 'miss' ? 'bg-red-500 border-red-700' : 'bg-indigo-600 hover:bg-indigo-700 border-indigo-800'
+                            hits[i] === 'hit' ? 'bg-green-500 border-green-700' : hits[i] === 'miss' ? 'bg-red-500 border-red-700' : 'bg-seasalt/80 hover:bg-seasalt text-liver border-liver'
                         }`}
                     >
                        {['D', 'F', 'J', 'K'][i]}

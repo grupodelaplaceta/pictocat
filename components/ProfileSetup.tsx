@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { CatSilhouetteIcon, SpinnerIcon } from './Icons';
+import { SpinnerIcon } from '../hooks/Icons';
 import * as apiService from '../services/apiService';
 import { UserProfile } from '../types';
+import { LOGO_URL } from '../constants';
 
 interface ProfileSetupProps {
   onProfileCreated: (profile: UserProfile) => void;
@@ -24,7 +25,9 @@ const ProfileSetup: React.FC<ProfileSetupProps> = ({ onProfileCreated }) => {
     setIsLoading(true);
     
     try {
-      const result = await apiService.createProfile(username);
+      // FIX: The createProfile function does not take any arguments.
+      // It uses the authenticated user's context on the backend.
+      const result = await apiService.createProfile();
       if (result.success && result.profile) {
         onProfileCreated(result.profile);
       } else {
@@ -38,19 +41,19 @@ const ProfileSetup: React.FC<ProfileSetupProps> = ({ onProfileCreated }) => {
   };
 
   return (
-    <div className="min-h-screen flex flex-col justify-center items-center p-4">
-      <div className="w-full max-w-sm mx-auto bg-white rounded-xl shadow-2xl p-8">
+    <div className="min-h-screen flex flex-col justify-center items-center p-4 bg-wheat">
+      <div className="w-full max-w-sm mx-auto bg-seasalt rounded-2xl p-8 border-4 border-liver shadow-[8px_8px_0_#6A4A3D]">
         <div className="flex flex-col items-center mb-6">
-          <CatSilhouetteIcon className="w-20 h-20 text-indigo-600 mb-2" />
-          <h1 className="text-3xl font-black text-gray-800">¡Casi listo!</h1>
+          <img src={LOGO_URL} alt="PictoCat Logo" className="w-24 h-24 mb-4" />
+          <h1 className="text-3xl font-black text-liver">¡Casi listo!</h1>
         </div>
 
-        <h2 className="text-xl font-bold text-center text-gray-700 mb-2">Crea tu perfil</h2>
-        <p className="text-sm text-center text-gray-500 mb-6">Elige un nombre de usuario único para identificarte en PictoCat.</p>
+        <h2 className="text-xl font-bold text-center text-liver mb-2">Crea tu perfil</h2>
+        <p className="text-sm text-center text-liver/80 mb-6">Elige un nombre de usuario único para identificarte en PictoCat.</p>
 
         <form onSubmit={handleSubmit} className="space-y-6">
           <div>
-            <label htmlFor="username" className="text-sm font-bold text-gray-600">
+            <label htmlFor="username" className="text-sm font-bold text-liver/80">
               Nombre de Usuario
             </label>
             <input
@@ -61,7 +64,7 @@ const ProfileSetup: React.FC<ProfileSetupProps> = ({ onProfileCreated }) => {
               placeholder="@tu_usuario"
               required
               disabled={isLoading}
-              className="w-full px-4 py-2 mt-2 border-2 border-gray-200 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 transition disabled:bg-slate-100"
+              className="input-cartoon mt-2"
             />
           </div>
 
@@ -70,8 +73,8 @@ const ProfileSetup: React.FC<ProfileSetupProps> = ({ onProfileCreated }) => {
           <div>
             <button
               type="submit"
-              disabled={isLoading}
-              className="w-full py-3 px-4 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-lg shadow-md transition-transform transform hover:scale-105 flex justify-center items-center disabled:bg-indigo-400 disabled:cursor-not-allowed"
+              disabled={isLoading || !username}
+              className="w-full btn-cartoon btn-cartoon-primary flex justify-center items-center"
             >
               {isLoading ? (
                 <SpinnerIcon className="w-6 h-6 animate-spin" />

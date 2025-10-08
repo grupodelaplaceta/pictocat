@@ -4,6 +4,7 @@ export interface Phrase {
   text: string;
   selectedImageId: number | null; // Changed to number to match DB IDs
   isCustom?: boolean;
+  isPublic?: boolean;
 }
 
 export interface CatImage {
@@ -45,8 +46,10 @@ export interface GameUpgrade {
 
 export interface UserProfile {
   id: string; // From auth provider
-  username: string;
+  email: string;
   data: UserData;
+  isVerified: boolean; 
+  role: 'user' | 'admin';
 }
 
 export interface UserData {
@@ -55,6 +58,41 @@ export interface UserData {
     unlockedImageIds: number[];
     playerStats: PlayerStats;
     purchasedUpgrades: UpgradeId[];
+}
+
+export interface AdminUserView {
+  id: string;
+  email: string;
+  role: string;
+  isVerified: boolean;
+}
+
+export interface PublicPhrase {
+  publicPhraseId: number;
+  userId: string;
+  email: string;
+  text: string;
+  imageUrl: string;
+  imageTheme: string;
+}
+
+// FIX: Add missing types for public profile and user search features to resolve import errors.
+export interface PublicProfilePhrase {
+    publicPhraseId: number;
+    text: string;
+    imageUrl: string;
+    imageTheme: string;
+}
+
+export interface PublicProfileData {
+    username: string;
+    isVerified: boolean;
+    phrases: PublicProfilePhrase[];
+}
+
+export interface SearchableUser {
+    username: string;
+    isVerified: boolean;
 }
 
 // --- Game Mode Types ---
@@ -81,10 +119,11 @@ export interface CatMemoryMode extends BaseGameMode {
   minImagesRequired: number;
 }
 
-export interface FelineRhythmMode extends BaseGameMode {
-  gameId: 'felineRhythm';
-  noteCount: number;
-  rewardMultiplier: number;
+export interface SimonSaysMode extends BaseGameMode {
+  gameId: 'simonSays';
+  initialSequenceLength: number;
+  speedMs: number; // time between notes
+  rewardPerRound: number;
 }
 
 export interface CatTriviaMode extends BaseGameMode {
@@ -95,5 +134,12 @@ export interface CatTriviaMode extends BaseGameMode {
   minImagesRequired: number;
 }
 
+// FIX: Add FelineRhythmMode type for the FelineRhythmGame component.
+export interface FelineRhythmMode extends BaseGameMode {
+  gameId: 'felineRhythm';
+  noteCount: number;
+  rewardMultiplier: number;
+}
 
-export type GameMode = MouseHuntMode | CatMemoryMode | FelineRhythmMode | CatTriviaMode;
+
+export type GameMode = MouseHuntMode | CatMemoryMode | SimonSaysMode | CatTriviaMode | FelineRhythmMode;
